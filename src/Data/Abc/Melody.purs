@@ -241,8 +241,8 @@ transformMusic m =
         duration = abcChord.duration * first.duration
       in
         do
-          -- set the notes all to start at the same time
-          _ <- updateState (addNotesToState true (1 % 1)) (Nel.toList abcChord.notes)
+          -- set the notes all to start at the same time with the correct duration
+          _ <- updateState (addNotesToState true abcChord.duration) (Nel.toList abcChord.notes)
           -- pace by incrementing the offset for the next note
           updateState incrementTimeOffset duration
 
