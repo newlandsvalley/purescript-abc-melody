@@ -383,25 +383,6 @@ processChordalNote tempoModifier tstate abcNote =
       _ ->
         Tuple (Array.cons newNote tstate.currentBar.midiPhrase) Nothing
 
-
-{-}
-processChordalNote ::  Rational -> TState -> AbcNote -> Tuple (List Midi.Message) (Maybe AbcNote)
-processChordalNote tempoModifier tstate abcNote =
-  let
-    msgOn = emitNoteOn tstate abcNote
-  in
-    case tstate.lastNoteTied of
-      Just lastNote ->
-        -- we don't support ties or grace notes into chords
-        -- just emit the tied note before the chordal note
-        let
-          tiedNotes = emitNoteOnOff tempoModifier tstate lastNote
-        in
-          Tuple (msgOn : (tiedNotes <> tstate.currentBar.midiMessages)) Nothing
-      _ ->
-        Tuple (msgOn : tstate.currentBar.midiMessages) Nothing
--}
-
 -- | process the incoming note, accounting for the fact that the previous note may have been tied.
 -- |
 -- | if it was tied, then we simply coalesce the notes by adding their durations.  If the incoming note
@@ -451,51 +432,6 @@ processNoteWithTie tempoModifier maybeGrace tstate abcNote =
             -- write out the note to the current MIDI bar
             Tuple (Array.cons note (graceNotes <> tstate.currentBar.midiPhrase)) Nothing
 
-{-}
-processNoteWithTie tempoModifier maybeGrace tstate abcNote =
-  case tstate.lastNoteTied of
-    Just lastNote ->
-      -- if the last note was tied, we can't have grace notes on this new note
-      -- so we just ignore them
-      let
-        combinedAbcNote = abcNote { duration = abcNote.duration + lastNote.duration }
-      in
-        if abcNote.tied then
-          -- save the combined note in lastNoteTied
-          Tuple tstate.currentBar.midiMessages (Just combinedAbcNote)
-        else
-          -- emit the note and set lastNoteTied to Nothing
-          let
-            notes = emitNoteOnOff tempoModifier tstate combinedAbcNote
-          in
-            Tuple (notes <> tstate.currentBar.midiMessages) Nothing
-    _ ->
-      let
-        -- the note is perhaps graced, in which case we have to reduce its duration
-        gracedNote = curtailedGracedNote maybeGrace abcNote
-        -- and we need to calculate the exact duration of each AbcNote in the
-        -- list of ABC Notes
-        graceAbcNotes =
-          case maybeGrace of
-            Just grace ->
-              map (individualGraceNote abcNote) $ Nel.toList grace.notes
-            _ ->
-              Nil
-        -- and emit the MIDI notes for each grace note
-        graceNotes = emitNotesOnOff tempoModifier tstate graceAbcNotes
-      in
-        if gracedNote.tied then
-          -- set lastNoteTied
-          Tuple (graceNotes <> tstate.currentBar.midiMessages) (Just gracedNote)
-        else
-          let
-            notes = emitNoteOnOff tempoModifier tstate gracedNote
-          in
-            -- write out the note to the current MIDI bar
-            Tuple (notes <> graceNotes <> tstate.currentBar.midiMessages) Nothing
--}
-
-
 -- | emit a MidiNote
 emitNote :: Rational -> TState -> AbcNote -> MidiNote
 emitNote tempoModifier tstate abcNote =
@@ -513,40 +449,6 @@ emitNote tempoModifier tstate abcNote =
 emitNotes :: Rational -> TState -> List AbcNote -> Array MidiNote
 emitNotes tempoModifier tstate abcNotes =
   toUnfoldable $ map (emitNote tempoModifier tstate) abcNotes
-
-{-}
--- | emit a standard note which is represented by a NoteOn Message
--- | followed by a NoteOff for the same pitch with the required delay
-emitNoteOnOff :: Rational -> TState -> AbcNote -> List Midi.Message
-emitNoteOnOff tempoModifier tstate abcNote =
-  let
-    pitch =
-      toMidiPitch abcNote tstate.modifiedKeySignature tstate.currentBarAccidentals
-    ticks =
-      noteTicks (abcNote.duration * tempoModifier)
-    in
-      (midiNoteOff ticks pitch) : (midiNoteOn 0 pitch) : Nil
-
--- | emit a sequence of on off MIDI messages from a sequence of ABC notes
--- | used for grace notes
-emitNotesOnOff :: Rational -> TState -> List AbcNote -> List Midi.Message
-emitNotesOnOff tempoModifier tstate abcNotes =
-  let
-    f :: AbcNote -> List Midi.Message -> List Midi.Message
-    f n acc =
-      acc <> (emitNoteOnOff tempoModifier tstate n)
-  in
-    foldr f Nil abcNotes
-
--- | emit just a NoteOn message (this is restricted to chords)
-emitNoteOn :: TState -> AbcNote -> Midi.Message
-emitNoteOn tstate abcNote =
-  let
-    pitch =
-      toMidiPitch abcNote tstate.modifiedKeySignature tstate.currentBarAccidentals
-  in
-    midiNoteOn 0 pitch
--}
 
 -- | chordal means that the notes form a chord and thus do not need
 -- | NoteOff messages to be generated after each note
@@ -566,47 +468,13 @@ addTupletContentsToState mGrace tempoModifier tstate restsOrNotes =
   in
     foldl (addRestOrNoteToState false tempoModifier) tstate gracedRestsOrNotes
 
--- possibly combine these next rwo routines
-
-{-}
--- | add a NoteOff message which will terminate a chord
-addNoteOffToState :: Rational -> TState -> AbcNote -> TState
-addNoteOffToState duration tstate abcNote =
-  let
-    pitch =
-      toMidiPitch abcNote tstate.modifiedKeySignature tstate.currentBarAccidentals
-    msg = midiNoteOff (noteTicks duration) pitch
-    bar' = tstate.currentBar { midiMessages = (msg : tstate.currentBar.midiMessages)}
-  in
-    tstate { currentBar = bar' }
--}
-
-{-}
--- | add a bunch of NoteOffs at the same duration
-addNoteOffsToState :: Rational -> TState -> List AbcNote  -> TState
-addNoteOffsToState duration tstate abcNotes =
-  foldl (addNoteOffToState duration) tstate abcNotes
--}
-
--- | add a pitchless NoteOn which indicates a rest
-
+-- | increment the time offset to pace the next note
 incrementTimeOffset :: TState -> Rational -> TState
 incrementTimeOffset tstate duration =
   let
     offset = tstate.currentOffset + (noteDuration tstate.abcTempo duration)
   in
     tstate { currentOffset = offset }
-
-
-{-}
-addRestToState tstate duration =
-  let
-    -- a rest is a note without a pitch
-    msg = midiNoteOn (noteTicks duration) 0
-    bar' = tstate.currentBar { midiMessages = (msg : tstate.currentBar.midiMessages)}
-  in
-    tstate { currentBar = bar' }
--}
 
 -- | cater for a change in key signature
 addKeySigToState :: TState-> ModifiedKeySignature -> TState
@@ -703,30 +571,37 @@ finaliseMelody =
       -- ensure we incorporate the very last bar
       tstate' = tstate { rawMelody = tstate.currentBar : tstate.rawMelody
                        , repeatState = repeatState }
-      wholePhrase = buildRepeatedMelody tstate'.rawMelody tstate'.repeatState.sections
+      wholeMelody = buildRepeatedMelody tstate'.rawMelody tstate'.repeatState.sections
       {-}
       recording' :: Midi.Recording
       recording' = Midi.Recording recording { tracks = singleton $ track }
       -}
       -- JMW!!! build and return melody here
-      tpl' = Tuple tstate' [wholePhrase]
+      tpl' = Tuple tstate' wholeMelody
     _ <- put tpl'
-    pure [wholePhrase]
+    pure wholeMelody
 
 -- the following functions deal with interpreting repeated sections
 
 -- | accumulate the MIDI messages from the List of bars
-accumulateMessages :: List MidiBar -> MidiPhrase
+accumulateMessages :: List MidiBar -> Melody
 accumulateMessages mbs =
   let
     phrases =  toUnfoldable $ map _.midiPhrase mbs
   in
     -- toUnfoldable $ reverse $  concatMap _.midiPhrase mbs
-    Array.reverse $ Array.concat phrases
+    [Array.reverse $ Array.concat phrases]
+
+
+{- we don't want a new phrase each bar!
+accumulateMessages :: List MidiBar -> Melody
+accumulateMessages mbs =
+  toUnfoldable $ map Array.reverse $ map _.midiPhrase mbs
+-}
 
 -- | turn a list of bars (with repeats removed) into a track
 -- | temporary measure until we integrate repeats
-buildSimpleTrack :: List MidiBar -> MidiPhrase
+buildSimpleTrack :: List MidiBar -> Melody
 buildSimpleTrack mbs =
   accumulateMessages mbs
 
@@ -736,13 +611,13 @@ barSelector strt fin mb =
   mb.number >= strt && mb.number < fin
 
 -- | build the notes from a subsection of the track
-trackSlice :: Int -> Int -> List MidiBar -> MidiPhrase
+trackSlice :: Int -> Int -> List MidiBar -> Melody
 trackSlice start finish mbs =
   accumulateMessages $ filter (barSelector start finish) mbs
 
 -- | take two variant slices of a melody line between start and finish
 -- |    taking account of first repeat and second repeat sections
-variantSlice :: Int -> Int -> Int -> Int -> List MidiBar-> MidiPhrase
+variantSlice :: Int -> Int -> Int -> Int -> List MidiBar-> Melody
 variantSlice start firstRepeat secondRepeat end mbs =
   let
     -- save the section of the tune we're interested in
@@ -756,7 +631,7 @@ variantSlice start firstRepeat secondRepeat end mbs =
 
 -- | build a repeat section
 -- | this function is intended for use within foldl
-repeatedSection ::  List MidiBar -> MidiPhrase -> Section -> MidiPhrase
+repeatedSection ::  List MidiBar -> Melody -> Section -> Melody
 repeatedSection mbs acc (Section { start: Just a, firstEnding: Just b, secondEnding : Just c, end: Just d, isRepeated : _ }) =
   (variantSlice a b c d mbs) <> acc
 repeatedSection mbs acc (Section { start: Just a, firstEnding: _, secondEnding : _, end: Just d, isRepeated : false }) =
@@ -787,14 +662,15 @@ individualGraceNote abcNote graceNote =
   graceNote { duration = graceFraction * abcNote.duration }
 
 -- | build any repeated section into an extended melody with all repeats realised -}
-buildRepeatedMelody :: List MidiBar -> Sections -> MidiPhrase
+buildRepeatedMelody :: List MidiBar -> Sections -> Melody
 buildRepeatedMelody mbs sections =
    -- trace "Sections" \_ ->
    -- traceShow sections \_ ->
   if (null sections) then
-    []
+    [[]]
   else
     foldl (repeatedSection mbs) [] sections
+    -- map (repeatedSection mbs) sections
 
 -- | add a grace note (which may be defined outside the tuplet) to the first
 -- | note inside the tuplet (assuming it is a note and not a rest)
@@ -817,17 +693,6 @@ noteDuration abcTempo noteLength =
     beatLength = abcTempo.unitNoteLength / (1 % 4)
   in
     toNumber $ beatLength * noteLength / bps
-
--- temp Bar Stuff we should do away with
-{-}
-defaultBarType :: BarType
-defaultBarType =
-    { thickness : Thin
-    , repeat : Nothing
-    , iteration : Nothing
-    }
--}
-
 
 -- temp Debug
 {-

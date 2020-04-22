@@ -36,6 +36,7 @@ assertMelody s expected =
 melodySuite :: Free TestF Unit
 melodySuite = do
   transformationSuite
+  repeatSuite
 
 
 transformationSuite :: Free TestF Unit
@@ -96,7 +97,12 @@ transformationSuite =
     test "change key inline" do
       assertMelody "| CDE | [K: D] | C |\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25, noteCs 0.75 0.25]]
 
-
+repeatSuite :: Free TestF Unit
+repeatSuite =
+  suite "repeats" do
+    test "simple repeat" do
+      -- for some reason, terminated by an empty phrase
+      assertMelody "|: CDE :|\r\n" [[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],[]]
 
 
 noteC :: Number -> Number -> MidiNote
