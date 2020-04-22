@@ -26,7 +26,7 @@ import Data.List.NonEmpty (head, length, tail, toList) as Nel
 import Data.Maybe (Maybe(..), fromMaybe, isJust)
 import Data.Rational (Rational, fromInt, toNumber, (%))
 import Data.Tuple (Tuple(..), fst, snd)
-import Prelude (bind, identity, map, pure, ($), (&&), (||), (*), (+), (-), (/), (<), (<>), (>=))
+import Prelude (bind, identity, map, pure, ($), (&&), (||), (*), (+), (-), (/), (<), (<>), (>=), (==))
 
 import Debug.Trace (spy)
 
@@ -277,6 +277,12 @@ addBarToState tstate barType =
       currentBar = tstate.currentBar
       repeatState =
         indexBar currentBar.iteration currentBar.repeat currentBar.number tstate.repeatState
+      -- reset the currentOffset for the next note if we're starting a new section
+      currentOffset =
+        if (barType.repeat == Just Begin) || (barType.repeat == Just BeginAndEnd) then
+          0.0
+        else
+          tstate.currentOffset
       -- ad this bar to the growing list of bars
       rawMelody =
         -- the current bar is not empty so we aggregate the new bar into the track
@@ -284,6 +290,7 @@ addBarToState tstate barType =
     in
       tstate { currentBar = buildNewBar (currentBar.number + 1) barType
              , currentBarAccidentals = Accidentals.empty
+             , currentOffset = currentOffset
              , repeatState = repeatState
              , rawMelody = rawMelody
              }
@@ -475,6 +482,11 @@ incrementTimeOffset tstate duration =
     offset = tstate.currentOffset + (noteDuration tstate.abcTempo duration)
   in
     tstate { currentOffset = offset }
+
+-- | increment the time offset to pace the next note
+resetTimeOffset :: TState -> TState
+resetTimeOffset tstate  =
+  tstate { currentOffset = 0.0 }
 
 -- | cater for a change in key signature
 addKeySigToState :: TState-> ModifiedKeySignature -> TState
