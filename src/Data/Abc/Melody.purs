@@ -440,18 +440,21 @@ processNoteWithTie tempoModifier maybeGrace tstate abcNote =
               Nil
         -- and emit the MIDI notes for each grace note
         graceNotes = emitNotes tempoModifier tstate graceAbcNotes
+        -- work out the extra offset to the main note caused by the graces
+        gracedNoteExtraOffset = sumDurations graceNotes
       in
         if gracedNote.tied then
           -- set lastNoteTied
           Tuple (graceNotes <> tstate.currentBar.midiPhrase) (Just gracedNote)
         else
           let
-            note = emitNote tempoModifier tstate gracedNote
+            -- and emit the note but now including the extra offset of the graces
+            note = emitNotePlus tempoModifier tstate gracedNote gracedNoteExtraOffset
           in
             -- write out the note to the current MIDI bar
             Tuple (Array.cons note (graceNotes <> tstate.currentBar.midiPhrase)) Nothing
 
--- | emit a MidiNote
+-- | emit a MidiNote at the given offset held in TState
 emitNote :: Rational -> TState -> AbcNote -> MidiNote
 emitNote tempoModifier tstate abcNote =
   let
@@ -460,7 +463,18 @@ emitNote tempoModifier tstate abcNote =
     duration =
       noteDuration tstate.abcTempo (abcNote.duration * tempoModifier)
   in
-    {- spy "emit note:" $-} midiNote tstate.currentOffset duration pitch
+    midiNote tstate.currentOffset duration pitch
+
+-- | emitbthe notes as before, but with an additiona; offset
+emitNotePlus :: Rational -> TState -> AbcNote -> Number ->  MidiNote
+emitNotePlus tempoModifier tstate abcNote extraOffset =
+  let
+    pitch =
+      toMidiPitch abcNote tstate.modifiedKeySignature tstate.currentBarAccidentals
+    duration =
+      noteDuration tstate.abcTempo (abcNote.duration * tempoModifier)
+  in
+    midiNote (tstate.currentOffset + extraOffset) duration pitch
 
 
 -- | emit a sequence of on off MIDINotes from a sequence of ABC notes
@@ -469,8 +483,13 @@ emitNotes :: Rational -> TState -> List AbcNote -> Array MidiNote
 emitNotes tempoModifier tstate abcNotes =
   toUnfoldable $ map (emitNote tempoModifier tstate) abcNotes
 
--- | chordal means that the notes form a chord and thus do not need
--- | NoteOff messages to be generated after each note
+-- | sum the duration of a bunch of MidiNotes
+sumDurations :: Array MidiNote -> Number
+sumDurations =
+  foldl (\acc next -> acc + next.duration) 0.0
+
+-- | chordal means that the notes form a chord and thus
+-- | all start at the same offset
 addNotesToState :: Boolean -> Rational -> TState-> List AbcNote -> TState
 addNotesToState chordal tempoModifier tstate abcNotes =
   foldl (addNoteToState chordal tempoModifier Nothing) tstate abcNotes
@@ -495,10 +514,12 @@ incrementTimeOffset tstate duration =
   in
     tstate { currentOffset = offset }
 
+{-}
 -- | increment the time offset to pace the next note
 resetTimeOffset :: TState -> TState
 resetTimeOffset tstate  =
   tstate { currentOffset = 0.0 }
+-}
 
 -- | cater for a change in key signature
 addKeySigToState :: TState-> ModifiedKeySignature -> TState

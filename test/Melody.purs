@@ -9,8 +9,6 @@ import Data.Rational (Rational, fromInt, toNumber, (%))
 import Data.Int (round)
 
 import Data.Abc.Parser (parse)
-import Data.Abc.Midi (toMidi, toMidiAtBpm)
-import Data.Abc.Tempo (standardMidiTick)
 import Audio.SoundFont (MidiNote)
 import Audio.SoundFont.Melody (MidiPhrase, Melody)
 import Data.Abc.Melody (toMelody)
@@ -37,6 +35,7 @@ melodySuite :: Free TestF Unit
 melodySuite = do
   transformationSuite
   repeatSuite
+  graceSuite
 
 
 transformationSuite :: Free TestF Unit
@@ -132,7 +131,14 @@ repeatSuite =
                                                       [noteC 0.0 0.25, noteD 0.25 0.25],
                                                       [noteF 0.0 0.25],
                                                       [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
-                                                      [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],[] ] 
+                                                      [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],[] ]
+
+
+graceSuite :: Free TestF Unit
+graceSuite =
+  suite "grace notes" do
+    test "single grace" do
+      assertMelody "| {D}CDE |\r\n" [ [noteD 0.0 0.025, noteC 0.025 0.225, noteD 0.25 0.25, noteE 0.5 0.25] ]
 
 
 noteC :: Number -> Number -> MidiNote
