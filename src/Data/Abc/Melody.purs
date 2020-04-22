@@ -26,7 +26,18 @@ import Data.List.NonEmpty (head, length, tail, toList) as Nel
 import Data.Maybe (Maybe(..), fromMaybe, isJust)
 import Data.Rational (Rational, fromInt, toNumber, (%))
 import Data.Tuple (Tuple(..), fst, snd)
-import Prelude (bind, identity, map, pure, ($), (&&), (||), (*), (+), (-), (/), (<), (<>), (>=), (==))
+import Prelude (bind, identity, map, pure, ($), (&&), (||), (*), (+), (-), (/), (<), (<>), (>=))
+
+{-  MidiPhrase length
+
+An uninterruptable sequence of MIDI soundfont notes.  In the current implementation, these phrases are started by
+the start of the tune, the start of a repeated section or the start of an alternate ending.  They are terminated by
+the end of the tune, the end of a repeated section or the start of an (i.e. the second) alternate ending.
+
+Note that this means the phrase length of a normal sequence of bars between these brackets is currently too long
+to provide a reasonably reposnive interruption.
+
+-}
 
 import Debug.Trace (spy)
 
@@ -279,7 +290,8 @@ addBarToState tstate barType =
         indexBar currentBar.iteration currentBar.repeat currentBar.number tstate.repeatState
       -- reset the currentOffset for the next note if we're starting a new section
       currentOffset =
-        if (barType.repeat == Just Begin) || (barType.repeat == Just BeginAndEnd) then
+        -- reset the current note offset if there's any kind of repeat or alternate ending marker
+        if isJust barType.repeat || isJust barType.iteration then
           0.0
         else
           tstate.currentOffset
@@ -635,7 +647,8 @@ variantSlice start firstRepeat secondRepeat end mbs =
     -- save the section of the tune we're interested in
     section = filter (barSelector start end) mbs
     -- |: ..... |2
-    firstSection = trackSlice start secondRepeat section
+    -- firstSection = trackSlice start secondRepeat section
+    firstSection = trackSlice start firstRepeat section <> trackSlice firstRepeat secondRepeat section
     -- |: .... |1  + |2 ..... :|
     secondSection = trackSlice start firstRepeat section <> trackSlice secondRepeat end section
   in

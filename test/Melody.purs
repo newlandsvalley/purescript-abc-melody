@@ -110,6 +110,29 @@ repeatSuite =
       assertMelody "|: CDE :|: DEF :|\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
                                              [noteD 0.0 0.25, noteE 0.25 0.25, noteF 0.5 0.25], [noteD 0.0 0.25, noteE 0.25 0.25, noteF 0.5 0.25],[]
                                             ]
+    test "simple repeat implicit start" do
+      assertMelody "| CDE :|\r\n" [[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]]
+    test "simple repeat then unrepeated" do
+      assertMelody "|: CDE :| F |\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
+                                         [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
+                                         [noteF 0.0 0.25],[] ]
+    test "unrepeated then simple repeat" do
+      assertMelody "| F |: CDE :|\r\n" [ [noteF 0.0 0.25],
+                                         [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
+                                         [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
+                                         [] ]
+    test "alternate endings" do
+      assertMelody "|: CD |1 E :|2 F |\r\n"  [ [noteC 0.0 0.25, noteD 0.25 0.25],
+                                               [noteE 0.0 0.25],
+                                               [noteC 0.0 0.25, noteD 0.25 0.25],
+                                               [noteF 0.0 0.25] ]
+    test "alternate endings then repeat" do
+      assertMelody "|: CD |1 E :|2 F |: CDE :|\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25],
+                                                      [noteE 0.0 0.25],
+                                                      [noteC 0.0 0.25, noteD 0.25 0.25],
+                                                      [noteF 0.0 0.25],
+                                                      [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
+                                                      [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],[] ] 
 
 
 noteC :: Number -> Number -> MidiNote
