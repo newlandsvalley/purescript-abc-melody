@@ -228,7 +228,7 @@ transformMusic :: Music -> State TransformationState Melody
 transformMusic m =
   case m of
     Note graceableNote -> do
-      updateState (addGraceableNoteToState false (1 % 1)) graceableNote
+      updateState (addGraceableNoteToState (1 % 1)) graceableNote
 
     Rest r ->
       updateState incrementTimeOffset r.duration
@@ -261,12 +261,12 @@ transformMusic m =
       case broken of
         LeftArrow i ->
           do
-            _ <- updateState (addGraceableNoteToState false (brokenTempo i false)) note1
-            updateState (addGraceableNoteToState false (brokenTempo i true)) note2
+            _ <- updateState (addGraceableNoteToState (brokenTempo i false)) note1
+            updateState (addGraceableNoteToState (brokenTempo i true)) note2
         RightArrow i ->
           do
-            _ <- updateState (addGraceableNoteToState false (brokenTempo i true)) note1
-            updateState (addGraceableNoteToState false (brokenTempo i false)) note2
+            _ <- updateState (addGraceableNoteToState (brokenTempo i true)) note1
+            updateState (addGraceableNoteToState (brokenTempo i false)) note2
 
     Inline header ->
       transformHeader header
@@ -343,22 +343,12 @@ transformHeader h =
         tpl <- get
         pure $ snd tpl
 
-addGraceableNoteToState :: Boolean -> Rational -> TState-> GraceableNote -> TState
-addGraceableNoteToState chordal tempoModifier tstate graceableNote =
-  addNoteToState chordal tempoModifier graceableNote.maybeGrace tstate graceableNote.abcNote
-
--- | a note is added to the current barAccidentals as a NoteOn NoteOff pair
--- | possible preceded by its grace notes (if they exist)
--- | there are other implications for state - if the note has an explicit
--- | accidental, overriding the key then it is added to state because it
--- | influences other notes later in the bar
-addNoteToState :: Boolean -> Rational -> Maybe Grace -> TState-> AbcNote -> TState
-addNoteToState chordal tempoModifier maybeGrace tstate abcNote =
+addGraceableNoteToState :: Rational -> TState-> GraceableNote -> TState
+addGraceableNoteToState tempoModifier tstate graceableNote =
   let
+    abcNote = graceableNote.abcNote
+    maybeGrace = graceableNote.maybeGrace
     Tuple notes newTie =
-      if chordal then
-        processChordalNote tempoModifier tstate abcNote
-      else
         processNoteWithTie tempoModifier maybeGrace tstate abcNote
     barAccidentals =
       addNoteToBarAccidentals abcNote tstate.currentBarAccidentals
@@ -369,20 +359,36 @@ addNoteToState chordal tempoModifier maybeGrace tstate abcNote =
     -- if the last note was tied, we need its duration to be able to pace the next note
     lastTiedNoteDuration = maybe (0 % 1) _.duration tstate.lastNoteTied
   in
-    if (chordal || (isJust newTie)) then
+    if (isJust newTie) then
       tstate'
     else
       incrementTimeOffset tstate' ((abcNote.duration + lastTiedNoteDuration) * tempoModifier)
 
+
+addChordalNoteToState :: Rational -> TState-> AbcNote -> TState
+addChordalNoteToState tempoModifier tstate abcNote =
+  let
+    Tuple notes _ =
+      processChordalNote tempoModifier tstate abcNote
+    barAccidentals =
+      addNoteToBarAccidentals abcNote tstate.currentBarAccidentals
+    tstate' = tstate { currentBar = tstate.currentBar { midiPhrase = notes }
+                     , currentBarAccidentals = barAccidentals
+                     }
+    -- if the last note was tied, we need its duration to be able to pace the next note
+    lastTiedNoteDuration = maybe (0 % 1) _.duration tstate.lastNoteTied
+  in
+    tstate'
+
 -- | tuplets can now contain rests
-addRestOrNoteToState :: Boolean -> Rational -> TState-> RestOrNote -> TState
-addRestOrNoteToState chordal tempoModifier tstate restOrNote =
+addRestOrNoteToState :: Rational -> TState-> RestOrNote -> TState
+addRestOrNoteToState tempoModifier tstate restOrNote =
   case restOrNote of
     Left r ->
       --  modifiy the rest duration by the tempo modifier
       incrementTimeOffset tstate (r.duration * tempoModifier)
     Right n ->
-      addGraceableNoteToState chordal tempoModifier tstate n
+      addGraceableNoteToState tempoModifier tstate n
 
 
 -- | process the incoming  note that is part of a chord.
@@ -503,7 +509,7 @@ lastDuration notes =
 -- | all start at the same offset
 addNotesToState :: Boolean -> Rational -> TState-> List AbcNote -> TState
 addNotesToState chordal tempoModifier tstate abcNotes =
-  foldl (addNoteToState chordal tempoModifier Nothing) tstate abcNotes
+  foldl (addChordalNoteToState tempoModifier) tstate abcNotes
 
 -- | Add the contents of a tuplet to state.  This is an optional grace note
 -- | plus a list of either rests or notes.
@@ -515,7 +521,7 @@ addTupletContentsToState mGrace tempoModifier tstate restsOrNotes =
     -- move the grace notes from external to internal
     gracedRestsOrNotes = gracifyFirstNote mGrace restsOrNotes
   in
-    foldl (addRestOrNoteToState false tempoModifier) tstate gracedRestsOrNotes
+    foldl (addRestOrNoteToState tempoModifier) tstate gracedRestsOrNotes
 
 -- | increment the time offset to pace the next note
 incrementTimeOffset :: TState -> Rational -> TState
