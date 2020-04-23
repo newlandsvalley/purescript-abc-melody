@@ -253,7 +253,7 @@ transformMusic m =
       in
         do
           -- set the notes all to start at the same time with the correct duration
-          _ <- updateState (addNotesToState true abcChord.duration) (Nel.toList abcChord.notes)
+          _ <- updateState (addChordalNotesToState abcChord.duration) (Nel.toList abcChord.notes)
           -- pace by incrementing the offset for the next note
           updateState incrementTimeOffset duration
 
@@ -347,9 +347,8 @@ addGraceableNoteToState :: Rational -> TState-> GraceableNote -> TState
 addGraceableNoteToState tempoModifier tstate graceableNote =
   let
     abcNote = graceableNote.abcNote
-    maybeGrace = graceableNote.maybeGrace
     Tuple notes newTie =
-        processNoteWithTie tempoModifier maybeGrace tstate abcNote
+        processNoteWithTie tempoModifier tstate graceableNote
     barAccidentals =
       addNoteToBarAccidentals abcNote tstate.currentBarAccidentals
     tstate' = tstate { currentBar = tstate.currentBar { midiPhrase = notes }
@@ -364,11 +363,66 @@ addGraceableNoteToState tempoModifier tstate graceableNote =
     else
       incrementTimeOffset tstate' ((abcNote.duration + lastTiedNoteDuration) * tempoModifier)
 
+-- | process the incoming note, accounting for the fact that the previous note may have been tied.
+-- |
+-- | if it was tied, then we simply coalesce the notes by adding their durations.  If the incoming note
+-- | is tied, then the (possibly combined) note is saved as the 'lastNoteTied' so that the whole
+-- | process will begin again at the next note.  If not tied, then the (possibly combined) note
+-- | is written into the current MIDI bar
+processNoteWithTie :: Rational -> TState -> GraceableNote -> Tuple MidiPhrase (Maybe AbcNote)
+processNoteWithTie tempoModifier tstate graceableNote =
+  let
+    abcNote = graceableNote.abcNote
+    maybeGrace = graceableNote.maybeGrace
+  in
+    case tstate.lastNoteTied of
+      Just lastNote ->
+        -- if the last note was tied, we can't have grace notes on this new note
+        -- so we just ignore them
+        let
+          combinedAbcNote = abcNote { duration = abcNote.duration + lastNote.duration }
+        in
+          if abcNote.tied then
+            -- save the combined note in lastNoteTied
+            Tuple tstate.currentBar.midiPhrase (Just combinedAbcNote)
+          else
+            -- emit the note and set lastNoteTied to Nothing
+            let
+              note = emitNote tempoModifier tstate combinedAbcNote
+            in
+              Tuple (Array.cons note tstate.currentBar.midiPhrase) Nothing
+      _ ->
+        let
+          -- the note is perhaps graced, in which case we have to reduce its duration
+          gracedNote = curtailedGracedNote maybeGrace abcNote
+          -- and we need to calculate the exact duration of each AbcNote in the
+          -- list of ABC Notes
+          graceAbcNotes =
+            case maybeGrace of
+              Just grace ->
+                map (individualGraceNote abcNote) $ Nel.toList grace.notes
+              _ ->
+                Nil
+          -- and emit the MIDI notes for each grace note
+          graceNotes = emitGraceNotes tempoModifier tstate graceAbcNotes
+          -- work out the extra offset to the main note caused by the graces
+          gracedNoteExtraOffset = sumDurations graceNotes
+        in
+          if gracedNote.tied then
+            -- set lastNoteTied
+            Tuple (graceNotes <> tstate.currentBar.midiPhrase) (Just gracedNote)
+          else
+            let
+              -- and emit the note but now including the extra offset of the graces
+              note = emitNotePlus tempoModifier tstate gracedNote gracedNoteExtraOffset
+            in
+              -- write out the note to the current MIDI bar
+              Tuple (Array.cons note (graceNotes <> tstate.currentBar.midiPhrase)) Nothing
 
 addChordalNoteToState :: Rational -> TState-> AbcNote -> TState
 addChordalNoteToState tempoModifier tstate abcNote =
   let
-    Tuple notes _ =
+    notes =
       processChordalNote tempoModifier tstate abcNote
     barAccidentals =
       addNoteToBarAccidentals abcNote tstate.currentBarAccidentals
@@ -380,21 +434,15 @@ addChordalNoteToState tempoModifier tstate abcNote =
   in
     tstate'
 
--- | tuplets can now contain rests
-addRestOrNoteToState :: Rational -> TState-> RestOrNote -> TState
-addRestOrNoteToState tempoModifier tstate restOrNote =
-  case restOrNote of
-    Left r ->
-      --  modifiy the rest duration by the tempo modifier
-      incrementTimeOffset tstate (r.duration * tempoModifier)
-    Right n ->
-      addGraceableNoteToState tempoModifier tstate n
-
+-- | Add notes from a chord to state
+addChordalNotesToState :: Rational -> TState-> List AbcNote -> TState
+addChordalNotesToState tempoModifier tstate abcNotes =
+  foldl (addChordalNoteToState tempoModifier) tstate abcNotes
 
 -- | process the incoming  note that is part of a chord.
 -- | Here, ties and grace notes preceding the note
 -- | are not supported
-processChordalNote ::  Rational -> TState -> AbcNote -> Tuple MidiPhrase (Maybe AbcNote)
+processChordalNote ::  Rational -> TState -> AbcNote -> MidiPhrase
 processChordalNote tempoModifier tstate abcNote =
   let
     newNote = emitNote tempoModifier tstate abcNote
@@ -406,61 +454,19 @@ processChordalNote tempoModifier tstate abcNote =
         let
           tiedNote = emitNote tempoModifier tstate lastNote
         in
-          Tuple (Array.cons newNote (Array.cons tiedNote tstate.currentBar.midiPhrase)) Nothing
+          Array.cons newNote (Array.cons tiedNote tstate.currentBar.midiPhrase)
       _ ->
-        Tuple (Array.cons newNote tstate.currentBar.midiPhrase) Nothing
+        Array.cons newNote tstate.currentBar.midiPhrase
 
--- | process the incoming note, accounting for the fact that the previous note may have been tied.
--- |
--- | if it was tied, then we simply coalesce the notes by adding their durations.  If the incoming note
--- | is tied, then the (possibly combined) note is saved as the 'lastNoteTied' so that the whole
--- | process will begin again at the next note.  If not tied, then the (possibly combined) note
--- | is written into the current MIDI bar
-processNoteWithTie :: Rational -> Maybe Grace -> TState -> AbcNote -> Tuple MidiPhrase (Maybe AbcNote)
-processNoteWithTie tempoModifier maybeGrace tstate abcNote =
-  case tstate.lastNoteTied of
-    Just lastNote ->
-      -- if the last note was tied, we can't have grace notes on this new note
-      -- so we just ignore them
-      let
-        combinedAbcNote = abcNote { duration = abcNote.duration + lastNote.duration }
-      in
-        if abcNote.tied then
-          -- save the combined note in lastNoteTied
-          Tuple tstate.currentBar.midiPhrase (Just combinedAbcNote)
-        else
-          -- emit the note and set lastNoteTied to Nothing
-          let
-            note = emitNote tempoModifier tstate combinedAbcNote
-          in
-            Tuple (Array.cons note tstate.currentBar.midiPhrase) Nothing
-    _ ->
-      let
-        -- the note is perhaps graced, in which case we have to reduce its duration
-        gracedNote = curtailedGracedNote maybeGrace abcNote
-        -- and we need to calculate the exact duration of each AbcNote in the
-        -- list of ABC Notes
-        graceAbcNotes =
-          case maybeGrace of
-            Just grace ->
-              map (individualGraceNote abcNote) $ Nel.toList grace.notes
-            _ ->
-              Nil
-        -- and emit the MIDI notes for each grace note
-        graceNotes = emitGraceNotes tempoModifier tstate graceAbcNotes
-        -- work out the extra offset to the main note caused by the graces
-        gracedNoteExtraOffset = sumDurations graceNotes
-      in
-        if gracedNote.tied then
-          -- set lastNoteTied
-          Tuple (graceNotes <> tstate.currentBar.midiPhrase) (Just gracedNote)
-        else
-          let
-            -- and emit the note but now including the extra offset of the graces
-            note = emitNotePlus tempoModifier tstate gracedNote gracedNoteExtraOffset
-          in
-            -- write out the note to the current MIDI bar
-            Tuple (Array.cons note (graceNotes <> tstate.currentBar.midiPhrase)) Nothing
+-- | tuplets can now contain rests
+addRestOrNoteToState :: Rational -> TState-> RestOrNote -> TState
+addRestOrNoteToState tempoModifier tstate restOrNote =
+  case restOrNote of
+    Left r ->
+      --  modifiy the rest duration by the tempo modifier
+      incrementTimeOffset tstate (r.duration * tempoModifier)
+    Right n ->
+      addGraceableNoteToState tempoModifier tstate n
 
 -- | emit a MidiNote at the given offset held in TState
 emitNote :: Rational -> TState -> AbcNote -> MidiNote
@@ -503,13 +509,6 @@ sumDurations =
 lastDuration :: Array MidiNote -> Number
 lastDuration notes =
   maybe 0.0 _.duration $ Array.last notes
-
-
--- | chordal means that the notes form a chord and thus
--- | all start at the same offset
-addNotesToState :: Boolean -> Rational -> TState-> List AbcNote -> TState
-addNotesToState chordal tempoModifier tstate abcNotes =
-  foldl (addChordalNoteToState tempoModifier) tstate abcNotes
 
 -- | Add the contents of a tuplet to state.  This is an optional grace note
 -- | plus a list of either rests or notes.
