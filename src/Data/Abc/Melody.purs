@@ -366,11 +366,13 @@ addNoteToState chordal tempoModifier maybeGrace tstate abcNote =
                      , lastNoteTied = newTie
                      , currentBarAccidentals = barAccidentals
                      }
+    -- if the last note was tied, we need its duration to be able to pace the next note
+    lastTiedNoteDuration = maybe (0 % 1) _.duration tstate.lastNoteTied
   in
     if (chordal || (isJust newTie)) then
       tstate'
     else
-      incrementTimeOffset tstate' (abcNote.duration * tempoModifier)
+      incrementTimeOffset tstate' ((abcNote.duration + lastTiedNoteDuration) * tempoModifier)
 
 -- | tuplets can now contain rests
 addRestOrNoteToState :: Boolean -> Rational -> TState-> RestOrNote -> TState

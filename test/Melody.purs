@@ -45,6 +45,8 @@ transformationSuite =
       assertMelody "| CDE |\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]]
     test "tied notes" do
       assertMelody "| CD-D |\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.5]]
+    test "tied notes pacing" do
+      assertMelody "| CD-DE |\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.5, noteE 0.75 0.25]]
     test "doubly tied notes" do
       assertMelody "| CD-D-D |\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.75]]
     test "tie across bars" do
@@ -141,6 +143,8 @@ graceSuite =
       assertMelody "| {D}CDE |\r\n" [ [noteD 0.0 0.025, noteC 0.025 0.225, noteD 0.25 0.25, noteE 0.5 0.25] ]
     test "double grace" do
       assertMelody "| {ED}CDE |\r\n" [ [noteE 0.0 0.025, noteD 0.025 0.025, noteC 0.05 0.2, noteD 0.25 0.25, noteE 0.5 0.25] ]
+    test "graces immediately after ties are ignored" do
+      assertMelody "| C-{D}CDE |\r\n" [ [noteC 0.0 0.5, noteD 0.5 0.25, noteE 0.75 0.25]]
 
 
 noteC :: Number -> Number -> MidiNote
