@@ -139,6 +139,8 @@ graceSuite =
   suite "grace notes" do
     test "single grace" do
       assertMelody "| {D}CDE |\r\n" [ [noteD 0.0 0.025, noteC 0.025 0.225, noteD 0.25 0.25, noteE 0.5 0.25] ]
+    test "double grace" do
+      assertMelody "| {ED}CDE |\r\n" [ [noteE 0.0 0.025, noteD 0.025 0.025, noteC 0.05 0.2, noteD 0.25 0.25, noteE 0.5 0.25] ]
 
 
 noteC :: Number -> Number -> MidiNote

@@ -8,5 +8,5 @@ import Melody (melodySuite)
 
 main :: Effect  Unit
 main = runTest do
-  suite "mekody" do
+  suite "melody" do
     melodySuite

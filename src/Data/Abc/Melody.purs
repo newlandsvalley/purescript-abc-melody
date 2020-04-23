@@ -23,7 +23,7 @@ import Data.Foldable (foldl, oneOf)
 import Data.List (List(..), (:), null, filter, toUnfoldable)
 import Data.List.NonEmpty (NonEmptyList)
 import Data.List.NonEmpty (head, length, tail, toList) as Nel
-import Data.Maybe (Maybe(..), fromMaybe, isJust)
+import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.Rational (Rational, fromInt, toNumber, (%))
 import Data.Tuple (Tuple(..), fst, snd)
 import Prelude (bind, identity, map, pure, ($), (&&), (||), (*), (+), (-), (/), (<), (<>), (>=))
@@ -35,7 +35,7 @@ the start of the tune, the start of a repeated section or the start of an altern
 the end of the tune, the end of a repeated section or the start of an (i.e. the second) alternate ending.
 
 Note that this means the phrase length of a normal sequence of bars between these brackets is currently too long
-to provide a reasonably reposnive interruption.
+to provide a reasonably resposnive interruption.
 
 -}
 
@@ -439,7 +439,7 @@ processNoteWithTie tempoModifier maybeGrace tstate abcNote =
             _ ->
               Nil
         -- and emit the MIDI notes for each grace note
-        graceNotes = emitNotes tempoModifier tstate graceAbcNotes
+        graceNotes = emitGraceNotes tempoModifier tstate graceAbcNotes
         -- work out the extra offset to the main note caused by the graces
         gracedNoteExtraOffset = sumDurations graceNotes
       in
@@ -457,15 +457,9 @@ processNoteWithTie tempoModifier maybeGrace tstate abcNote =
 -- | emit a MidiNote at the given offset held in TState
 emitNote :: Rational -> TState -> AbcNote -> MidiNote
 emitNote tempoModifier tstate abcNote =
-  let
-    pitch =
-      toMidiPitch abcNote tstate.modifiedKeySignature tstate.currentBarAccidentals
-    duration =
-      noteDuration tstate.abcTempo (abcNote.duration * tempoModifier)
-  in
-    midiNote tstate.currentOffset duration pitch
+  emitNotePlus tempoModifier tstate abcNote 0.0
 
--- | emitbthe notes as before, but with an additiona; offset
+-- | emit the note as before, but with an additiona; offset
 emitNotePlus :: Rational -> TState -> AbcNote -> Number ->  MidiNote
 emitNotePlus tempoModifier tstate abcNote extraOffset =
   let
@@ -476,17 +470,32 @@ emitNotePlus tempoModifier tstate abcNote extraOffset =
   in
     midiNote (tstate.currentOffset + extraOffset) duration pitch
 
-
--- | emit a sequence of on off MIDINotes from a sequence of ABC notes
--- | used for grace notes
-emitNotes :: Rational -> TState -> List AbcNote -> Array MidiNote
-emitNotes tempoModifier tstate abcNotes =
-  toUnfoldable $ map (emitNote tempoModifier tstate) abcNotes
+-- | emit the grace notes that may preface a 'graced' note
+-- | This is a bit hacky.  We don't update state after each emission bur instead
+-- | pace the notes by adding the duration of the previous note to the offset
+-- | of the one we're handling.  At the end, we pace the 'graced' note by adding
+-- | he overall grace note duration to its offset
+emitGraceNotes :: Rational -> TState -> List AbcNote -> Array MidiNote
+emitGraceNotes tempoModifier tstate abcNotes =
+  let
+    f :: Array MidiNote -> AbcNote -> Array MidiNote
+    f acc note =
+      [emitNotePlus tempoModifier tstate note (lastDuration acc)] <> acc
+  in
+    foldl f [] abcNotes
 
 -- | sum the duration of a bunch of MidiNotes
+-- | (used for grace notes)
 sumDurations :: Array MidiNote -> Number
 sumDurations =
   foldl (\acc next -> acc + next.duration) 0.0
+
+-- | find the duration of the final note in a bunch of MidiNotes
+-- | (used for grace notes)
+lastDuration :: Array MidiNote -> Number
+lastDuration notes =
+  maybe 0.0 _.duration $ Array.last notes
+
 
 -- | chordal means that the notes form a chord and thus
 -- | all start at the same offset
@@ -568,8 +577,6 @@ midiNote offset duration pitch =
   , duration : duration      -- the duration of the note
   , gain : defaultVolume     -- the volume (between 0 and 1)
   }
-
-
 
 -- | work out the broken rhythm tempo
 brokenTempo :: Int -> Boolean -> Rational
