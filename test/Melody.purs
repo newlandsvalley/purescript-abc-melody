@@ -146,14 +146,22 @@ graceSuite =
     -- | but here they eat into the combined tied note.  i.e. the behaviour of the example is identical to | {D}C2DE |
     test "graces before ties are accumulated" do
       assertMelody "| {D}C-CDE |\r\n" [ [noteD 0.0 0.05, noteC 0.05 0.45, noteD 0.5 0.25, noteE 0.75 0.25] ]
+    test "graces inside tuplets" do
+      assertMelody "| (3C3{E}D3E3 |\r\n" [ [noteC 0.0 0.5, noteE 0.5 0.05, noteD 0.55 0.45, noteE 1.0 0.5]]
+    test "graces immediately preceding tuplets" do
+      assertMelody "| {E}(3C3D3E3 |\r\n" [ [noteE 0.0 0.05, noteC 0.05 0.45, noteD 0.5 0.5, noteE 1.0 0.5]]
+    test "graces in broken rhythm >" do
+      assertMelody "| C2>{E}D2 |\r\n" [ [noteC 0.0 0.75, noteE 0.75 0.025, noteD 0.775 0.225] ]
 
 
+
+{-}
 bugSuite :: Free TestF Unit
 bugSuite =
   suite "bugss" do
-    test "graces before ties are accumulated" do
-      assertMelody "| {D}C-CDE |\r\n" [ [noteD 0.0 0.05, noteC 0.05 0.45, noteD 0.5 0.25, noteE 0.75 0.25] ]
-
+    test "graces in broken rhythm >" do
+      assertMelody "| C2>{E}D2 |\r\n" [ [noteC 0.0 0.75, noteE 0.75 0.025, noteD 0.775 0.225] ]
+-}
 
 
 noteC :: Number -> Number -> MidiNote
