@@ -142,12 +142,17 @@ graceSuite =
       assertMelody "| {ED}CDE |\r\n" [ [noteE 0.0 0.025, noteD 0.025 0.025, noteC 0.05 0.2, noteD 0.25 0.25, noteE 0.5 0.25] ]
     test "graces immediately after ties are ignored" do
       assertMelody "| C-{D}CDE |\r\n" [ [noteC 0.0 0.5, noteD 0.5 0.25, noteE 0.75 0.25]]
+    -- | grace before ties.  Behaviour is differebt from Abc.Midi.  There, grace notes eat into the first note of the tie
+    -- | but here they eat into the combined tied note.  i.e. the behaviour of the example is identical to | {D}C2DE |
+    test "graces before ties are accumulated" do
+      assertMelody "| {D}C-CDE |\r\n" [ [noteD 0.0 0.05, noteC 0.05 0.45, noteD 0.5 0.25, noteE 0.75 0.25] ]
+
 
 bugSuite :: Free TestF Unit
 bugSuite =
   suite "bugss" do
     test "graces before ties are accumulated" do
-      assertMelody "| {D}C-CDE |\r\n" [ [noteD 0.0 0.025, noteC 0.025 0.475, noteD 0.5 0.25, noteE 0.75 0.25] ]
+      assertMelody "| {D}C-CDE |\r\n" [ [noteD 0.0 0.05, noteC 0.05 0.45, noteD 0.5 0.25, noteE 0.75 0.25] ]
 
 
 
