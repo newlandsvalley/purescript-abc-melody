@@ -1,21 +1,19 @@
 module Melody (melodySuite) where
 
-import Prelude (Unit, discard, show, (<>))
-import Control.Monad.Free (Free)
-import Data.Either (Either(..))
-
-import Data.Abc.Parser (parse)
 import Audio.SoundFont (MidiNote)
 import Audio.SoundFont.Melody (Melody)
-import Data.Abc.Melody (toMelody)
-
+import Control.Monad.Free (Free)
+import Data.Abc.Melody (toMelody, toMelodyAtBpm)
+import Data.Abc.Parser (parse)
+import Data.Either (Either(..))
+import Prelude (Unit, discard, show, (<>))
 import Test.Unit (Test, TestF, suite, test, failure)
 import Test.Unit.Assert as Assert
 
 gain :: Number
 gain = 0.5
 
-assertMelody :: String -> Melody -> Test
+assertMelody :: String ->  Melody -> Test
 assertMelody s expected =
   case (parse s) of
     Right tune ->
@@ -27,11 +25,24 @@ assertMelody s expected =
     Left err ->
       failure ("parse failed: " <> (show err))
 
+assertMelodyAtBpm :: String -> Int -> Melody -> Test
+assertMelodyAtBpm s bpm expected =
+  case (parse s) of
+    Right tune ->
+      let
+        melody = toMelodyAtBpm tune bpm
+      in
+        Assert.equal expected melody
+
+    Left err ->
+      failure ("parse failed: " <> (show err))
+
 melodySuite :: Free TestF Unit
 melodySuite = do
   transformationSuite
   repeatSuite
   graceSuite
+  atTempoSuite
   -- bugSuite
 
 
@@ -153,7 +164,15 @@ graceSuite =
     test "graces in broken rhythm >" do
       assertMelody "| C2>{E}D2 |\r\n" [ [noteC 0.0 0.75, noteE 0.75 0.025, noteD 0.775 0.225] ]
 
-
+atTempoSuite :: Free TestF Unit
+atTempoSuite =
+  suite "set tempo externally" do
+    test "identical tempo" do
+      assertMelodyAtBpm "| CDE |\r\n" 120  [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]]
+    test "half tempo" do
+      assertMelodyAtBpm "| CDE |\r\n" 60 [ [noteC 0.0 0.5, noteD 0.5 0.5, noteE 1.0 0.5]]
+    test "double tempo" do
+      assertMelodyAtBpm "| CDE |\r\n" 240 [ [noteC 0.0 0.125, noteD 0.125 0.125, noteE 0.25 0.125]]
 
 {-}
 bugSuite :: Free TestF Unit
