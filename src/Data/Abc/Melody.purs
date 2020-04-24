@@ -28,14 +28,14 @@ import Data.Rational (Rational, fromInt, toNumber, (%))
 import Data.Tuple (Tuple(..), fst, snd)
 import Prelude (bind, identity, map, pure, ($), (&&), (||), (*), (+), (-), (/), (<), (<>), (>=))
 
-{-  MidiPhrase length
+{-  MidiPhrase treatment
 
 An uninterruptable sequence of MIDI soundfont notes.  In the current implementation, these phrases are started by
 the start of the tune, the start of a repeated section or the start of an alternate ending.  They are terminated by
 the end of the tune, the end of a repeated section or the start of an (i.e. the second) alternate ending.
 
 Note that this means the phrase length of a normal sequence of bars between these brackets is currently too long
-to provide a reasonably resposnive interruption.
+to provide a reasonably responsive interruption.
 
 -}
 
@@ -175,14 +175,12 @@ initialState tune =
 
 transformTune :: AbcTune -> State TransformationState Melody
 transformTune tune =
-  do
     -- we don't need to process the initial headers because
     -- they're already adopted in the initial state
     transformBody tune.body
 
 transformBody :: TuneBody -> State TransformationState Melody
 transformBody Nil =
-  do
     finaliseMelody
 transformBody (p : ps) =
   do
@@ -227,7 +225,7 @@ transformMusicLine (l : ls) =
 transformMusic :: Music -> State TransformationState Melody
 transformMusic m =
   case m of
-    Note graceableNote -> do
+    Note graceableNote -> 
       updateState (addGraceableNoteToState (1 % 1)) graceableNote
 
     Rest r ->
@@ -426,13 +424,10 @@ addChordalNoteToState tempoModifier tstate abcNote =
       processChordalNote tempoModifier tstate abcNote
     barAccidentals =
       addNoteToBarAccidentals abcNote tstate.currentBarAccidentals
-    tstate' = tstate { currentBar = tstate.currentBar { midiPhrase = notes }
-                     , currentBarAccidentals = barAccidentals
-                     }
-    -- if the last note was tied, we need its duration to be able to pace the next note
-    lastTiedNoteDuration = maybe (0 % 1) _.duration tstate.lastNoteTied
   in
-    tstate'
+    tstate { currentBar = tstate.currentBar { midiPhrase = notes }
+           , currentBarAccidentals = barAccidentals
+           }
 
 -- | Add notes from a chord to state
 addChordalNotesToState :: Rational -> TState-> List AbcNote -> TState
@@ -473,7 +468,7 @@ emitNote :: Rational -> TState -> AbcNote -> MidiNote
 emitNote tempoModifier tstate abcNote =
   emitNotePlus tempoModifier tstate abcNote 0.0
 
--- | emit the note as before, but with an additiona; offset
+-- | emit the note as before, but with an additional offset
 emitNotePlus :: Rational -> TState -> AbcNote -> Number ->  MidiNote
 emitNotePlus tempoModifier tstate abcNote extraOffset =
   let
@@ -631,11 +626,6 @@ finaliseMelody =
       tstate' = tstate { rawMelody = tstate.currentBar : tstate.rawMelody
                        , repeatState = repeatState }
       wholeMelody = buildRepeatedMelody tstate'.rawMelody tstate'.repeatState.sections
-      {-}
-      recording' :: Midi.Recording
-      recording' = Midi.Recording recording { tracks = singleton $ track }
-      -}
-      -- JMW!!! build and return melody here
       tpl' = Tuple tstate' wholeMelody
     _ <- put tpl'
     pure wholeMelody

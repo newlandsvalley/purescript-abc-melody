@@ -1,16 +1,12 @@
 module Melody (melodySuite) where
 
-import Prelude (Unit, discard, show, (<>), (*), (<<<))
+import Prelude (Unit, discard, show, (<>))
 import Control.Monad.Free (Free)
-import Data.List (List(..), head, (:))
 import Data.Either (Either(..))
-import Data.Maybe (fromMaybe)
-import Data.Rational (Rational, fromInt, toNumber, (%))
-import Data.Int (round)
 
 import Data.Abc.Parser (parse)
 import Audio.SoundFont (MidiNote)
-import Audio.SoundFont.Melody (MidiPhrase, Melody)
+import Audio.SoundFont.Melody (Melody)
 import Data.Abc.Melody (toMelody)
 
 import Test.Unit (Test, TestF, suite, test, failure)
