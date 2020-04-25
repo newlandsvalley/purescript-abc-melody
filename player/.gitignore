@@ -1,7 +1,6 @@
+/.*
+!/.gitignore
 /bower_components/
 /node_modules/
-/.pulp-cache/
-/deprecated/
 /output/
-/.psc*
-/.psa*
+/dist/app.js
