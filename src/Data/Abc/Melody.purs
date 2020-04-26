@@ -52,6 +52,24 @@ graceFraction :: Rational
 graceFraction =
   (1 % 10)
 
+defaultPhraseSize :: Number
+defaultPhraseSize =
+  0.6
+
+-- | Transform ABC into a playable melody using default settings for
+-- | BPM (120) and generated phrase size (0.6s)
+toMelody :: AbcTune -> Melody
+toMelody tune =
+  evalState (transformTune tune) (initialState defaultPhraseSize tune)
+
+
+toMelodyAtBpm :: AbcTune -> Int -> Number -> Melody
+toMelodyAtBpm originalTune bpm phraseSize =
+  let
+    tune = setBpm bpm originalTune
+  in
+    evalState (transformTune tune) (initialState phraseSize tune)
+
 -- | Convert an ABC note pitch to a MIDI pitch.
 -- |
 -- | AbcNote - the note in question
@@ -91,20 +109,6 @@ midiPitchOffset n mks barAccidentals =
   in
     pitchNumber pattern
 
--- | Transform ABC into a playable melody
-toMelody :: AbcTune -> Melody
-toMelody tune =
-  do
-    evalState (transformTune tune) (initialState tune)
-
-
-toMelodyAtBpm :: AbcTune -> Int -> Melody
-toMelodyAtBpm originalTune bpm =
-  let
-    tune = setBpm bpm originalTune
-  in
-    evalState (transformTune tune) (initialState tune)
-
 -- | a bar of MIDI music
 type MidiBar =
   { number :: Int                         -- sequential from zero
@@ -117,6 +121,7 @@ type MidiBar =
 type TState =
     { modifiedKeySignature ::  ModifiedKeySignature    -- the current key signature
     , abcTempo ::  AbcTempo                            -- the current tempo
+    , phraseSize :: Number                             -- max size of a MIDI phrase
     , currentBar :: MidiBar                            -- the current bar being translated
     , currentBarAccidentals :: Accidentals.Accidentals -- can't put this in MidiBar because of typeclass constraints
                                                        -- any notes marked explicitly as accidentals in the current bar
@@ -158,14 +163,15 @@ defaultVolume =  0.5
 
 -- | this initial state is then threaded through the computation
 -- | but will be altered when ABC headers are encountered
-initialState :: AbcTune -> TransformationState
-initialState tune =
+initialState :: Number -> AbcTune -> TransformationState
+initialState phraseSize tune =
   let
     abcTempo = getAbcTempo tune
     keySignature = fromMaybe defaultKey (getKeySig tune)
   in
     Tuple { modifiedKeySignature: keySignature
           , abcTempo : abcTempo
+          , phraseSize : phraseSize
           , currentBar : initialBar
           , currentBarAccidentals : Accidentals.empty
           , currentOffset : 0.0

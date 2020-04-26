@@ -2,6 +2,7 @@
 /node_modules/
 /.pulp-cache/
 /deprecated/
+/player/dist/app.js
 /output/
 /.psc*
 /.psa*

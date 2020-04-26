@@ -10,8 +10,12 @@ import Prelude (Unit, discard, show, (<>))
 import Test.Unit (Test, TestF, suite, test, failure)
 import Test.Unit.Assert as Assert
 
+
 gain :: Number
 gain = 0.5
+
+phraseSize :: Number
+phraseSize = 0.6
 
 assertMelody :: String ->  Melody -> Test
 assertMelody s expected =
@@ -30,7 +34,7 @@ assertMelodyAtBpm s bpm expected =
   case (parse s) of
     Right tune ->
       let
-        melody = toMelodyAtBpm tune bpm
+        melody = toMelodyAtBpm tune bpm phraseSize
       in
         Assert.equal expected melody
 

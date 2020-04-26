@@ -28,7 +28,7 @@ main = HA.runHalogenAff do
   case etune of
     Right abcTune -> do
       let
-        tempoedAbc = TempoedAbc { bpm : 120, abcTune: abcTune }
+        tempoedAbc = TempoedAbc { abcTune: abcTune, bpm : 120, phraseSize : 0.6 }
       io <- runUI (component tempoedAbc instruments) unit body
       pure unit
     Left err -> do
