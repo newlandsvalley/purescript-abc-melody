@@ -15,6 +15,7 @@ import Data.Abc.Accidentals as Accidentals
 import Data.Abc.Canonical as Canonical
 import Data.Abc.KeySignature (modifiedKeySet, pitchNumber, notesInChromaticScale)
 import Data.Abc.Melody.RepeatSections (RepeatState, Section(..), Sections, initialRepeatState, indexBar, finalBar)
+import Data.Abc.Melody.Phrasing (rephraseSection)
 import Data.Abc.Metadata (dotFactor, getKeySig)
 import Data.Abc.Tempo (AbcTempo, getAbcTempo, setBpm, beatsPerSecond)
 import Data.Array as Array
@@ -27,7 +28,7 @@ import Data.List.NonEmpty (head, length, tail, toList) as Nel
 import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.Rational (Rational, fromInt, toNumber, (%))
 import Data.Tuple (Tuple(..), fst, snd)
-import Prelude (bind, identity, map, pure, ($), (&&), (||), (*), (+), (-), (/), (<), (<>), (>=))
+import Prelude (bind, identity, map, not, pure, ($), (&&), (||), (*), (+), (-), (/), (<), (<>), (>=))
 
 {-  MidiPhrase treatment
 
@@ -40,7 +41,7 @@ to provide a reasonably responsive interruption.
 
 -}
 
-import Debug.Trace (spy)
+import Debug.Trace (spy, trace, traceM)
 
 -- | The pitch of a note expressed as a MIDI interval.
 type MidiPitch =
@@ -647,7 +648,7 @@ finaliseMelody =
       -- ensure we incorporate the very last bar
       tstate' = tstate { rawMelody = tstate.currentBar : tstate.rawMelody
                        , repeatState = repeatState }
-      wholeMelody = buildRepeatedMelody tstate'.rawMelody tstate'.repeatState.sections
+      wholeMelody = buildRepeatedMelody tstate'.rawMelody tstate'.repeatState.sections tstate.phraseSize
       tpl' = Tuple tstate' wholeMelody
     _ <- put tpl'
     pure wholeMelody
@@ -655,13 +656,13 @@ finaliseMelody =
 -- the following functions deal with interpreting repeated sections
 
 -- | accumulate the MIDI messages from the List of bars
-accumulateMessages :: List MidiBar -> Melody
-accumulateMessages mbs =
+accumulateMessages :: Number -> List MidiBar -> Melody
+accumulateMessages phraseSize mbs  =
   let
     phrases =  toUnfoldable $ map _.midiPhrase mbs
   in
     -- toUnfoldable $ reverse $  concatMap _.midiPhrase mbs
-    [Array.reverse $ Array.concat phrases]
+    rephraseSection phraseSize $ Array.reverse $ Array.concat phrases
 
 
 {- we don't want a new phrase each bar!
@@ -672,9 +673,10 @@ accumulateMessages mbs =
 
 -- | turn a list of bars (with repeats removed) into a track
 -- | temporary measure until we integrate repeats
-buildSimpleTrack :: List MidiBar -> Melody
-buildSimpleTrack mbs =
-  accumulateMessages mbs
+buildSimpleTrack :: List MidiBar -> Number -> Melody
+buildSimpleTrack mbs phraseSize =
+  trace "build simple track" \_ ->
+    accumulateMessages phraseSize mbs
 
 -- | select a subset of MIDI bars
 barSelector :: Int -> Int -> MidiBar -> Boolean
@@ -682,35 +684,35 @@ barSelector strt fin mb =
   mb.number >= strt && mb.number < fin
 
 -- | build the notes from a subsection of the track
-trackSlice :: Int -> Int -> List MidiBar -> Melody
-trackSlice start finish mbs =
-  accumulateMessages $ filter (barSelector start finish) mbs
+trackSlice :: Int -> Int -> List MidiBar -> Number -> Melody
+trackSlice start finish mbs phraseSize  =
+  accumulateMessages phraseSize $ filter (barSelector start finish) mbs
 
 -- | take two variant slices of a melody line between start and finish
 -- |    taking account of first repeat and second repeat sections
-variantSlice :: Int -> Int -> Int -> Int -> List MidiBar-> Melody
-variantSlice start firstRepeat secondRepeat end mbs =
+variantSlice :: Int -> Int -> Int -> Int ->List MidiBar-> Number ->  Melody
+variantSlice start firstRepeat secondRepeat end mbs phraseSize =
   let
     -- save the section of the tune we're interested in
     section = filter (barSelector start end) mbs
     -- |: ..... |2
     -- firstSection = trackSlice start secondRepeat section
-    firstSection = trackSlice start firstRepeat section <> trackSlice firstRepeat secondRepeat section
+    firstSection = trackSlice start firstRepeat section phraseSize <> trackSlice firstRepeat secondRepeat section phraseSize
     -- |: .... |1  + |2 ..... :|
-    secondSection = trackSlice start firstRepeat section <> trackSlice secondRepeat end section
+    secondSection = trackSlice start firstRepeat section phraseSize <> trackSlice secondRepeat end section phraseSize
   in
     firstSection <> secondSection
 
 -- | build a repeat section
 -- | this function is intended for use within foldl
-repeatedSection ::  List MidiBar -> Melody -> Section -> Melody
-repeatedSection mbs acc (Section { start: Just a, firstEnding: Just b, secondEnding : Just c, end: Just d, isRepeated : _ }) =
-  (variantSlice a b c d mbs) <> acc
-repeatedSection mbs acc (Section { start: Just a, firstEnding: _, secondEnding : _, end: Just d, isRepeated : false }) =
-  (trackSlice a d mbs) <> acc
-repeatedSection mbs acc (Section { start: Just a, firstEnding: _, secondEnding : _, end: Just d, isRepeated : true }) =
-  (trackSlice a d mbs) <> (trackSlice a d mbs) <> acc
-repeatedSection mbs acc _ =
+repeatedSection ::  List MidiBar -> Number -> Melody -> Section -> Melody
+repeatedSection mbs phraseSize acc (Section { start: Just a, firstEnding: Just b, secondEnding : Just c, end: Just d, isRepeated : _ }) =
+  (variantSlice a b c d mbs phraseSize ) <> acc
+repeatedSection mbs phraseSize  acc (Section { start: Just a, firstEnding: _, secondEnding : _, end: Just d, isRepeated : false }) =
+  (trackSlice a d mbs phraseSize) <> acc
+repeatedSection mbs phraseSize acc (Section { start: Just a, firstEnding: _, secondEnding : _, end: Just d, isRepeated : true }) =
+  (trackSlice a d mbs phraseSize) <> (trackSlice a d mbs phraseSize) <> acc
+repeatedSection _ _ acc _ =
   acc
 
 -- | Curtail the duration of the note by taking account of any grace notes
@@ -734,14 +736,12 @@ individualGraceNote abcNote graceNote =
   graceNote { duration = graceFraction * abcNote.duration }
 
 -- | build any repeated section into an extended melody with all repeats realised -}
-buildRepeatedMelody :: List MidiBar -> Sections -> Melody
-buildRepeatedMelody mbs sections =
-   -- trace "Sections" \_ ->
-   -- traceShow sections \_ ->
+buildRepeatedMelody :: List MidiBar -> Sections -> Number -> Melody
+buildRepeatedMelody mbs sections phraseSize =
   if (null sections) then
     [[]]
   else
-    foldl (repeatedSection mbs) [] sections
+    Array.filter (not Array.null) $ foldl (repeatedSection mbs phraseSize) [] sections
     -- map (repeatedSection mbs) sections
 
 -- | add a grace note (which may be defined outside the tuplet) to the first

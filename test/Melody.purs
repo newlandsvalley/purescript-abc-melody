@@ -14,15 +14,21 @@ import Test.Unit.Assert as Assert
 gain :: Number
 gain = 0.5
 
+-- | this is a realistic size for individual phrases in the melody
 phraseSize :: Number
 phraseSize = 0.6
+
+-- | but this is what we'll use for the bulk of the tests - a melody well
+-- | then consist of a single phrase which can be tested more easily
+longPhraseSize :: Number
+longPhraseSize = 200.0
 
 assertMelody :: String ->  Melody -> Test
 assertMelody s expected =
   case (parse s) of
     Right tune ->
       let
-        melody = toMelody tune
+        melody = toMelodyAtBpm tune 120 longPhraseSize
       in
         Assert.equal expected melody
 
@@ -34,12 +40,25 @@ assertMelodyAtBpm s bpm expected =
   case (parse s) of
     Right tune ->
       let
-        melody = toMelodyAtBpm tune bpm phraseSize
+        melody = toMelodyAtBpm tune bpm longPhraseSize
       in
         Assert.equal expected melody
 
     Left err ->
       failure ("parse failed: " <> (show err))
+
+assertMelodyShortPhrase :: String ->  Melody -> Test
+assertMelodyShortPhrase s expected =
+  case (parse s) of
+    Right tune ->
+      let
+        melody = toMelodyAtBpm tune 120 phraseSize
+      in
+        Assert.equal expected melody
+
+    Left err ->
+      failure ("parse failed: " <> (show err))
+
 
 melodySuite :: Free TestF Unit
 melodySuite = do
@@ -47,8 +66,8 @@ melodySuite = do
   repeatSuite
   graceSuite
   atTempoSuite
+  phrasingSuite
   -- bugSuite
-
 
 transformationSuite :: Free TestF Unit
 transformationSuite =
@@ -115,25 +134,25 @@ repeatSuite =
   suite "repeats" do
     test "simple repeat" do
       -- for some reason, terminated by an empty phrase
-      assertMelody "|: CDE :|\r\n" [[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],[]]
+      assertMelody "|: CDE :|\r\n" [[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]]
     test "lead-in then repeat" do
       assertMelody "FC |: CDE :|\r\n"  [[noteF 0.0 0.25, noteC 0.25 0.25],[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
-                                        [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],[]]
+                                        [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]]
     test "pair of repeats" do
       assertMelody "|: CDE :|: DEF :|\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
-                                             [noteD 0.0 0.25, noteE 0.25 0.25, noteF 0.5 0.25], [noteD 0.0 0.25, noteE 0.25 0.25, noteF 0.5 0.25],[]
+                                             [noteD 0.0 0.25, noteE 0.25 0.25, noteF 0.5 0.25], [noteD 0.0 0.25, noteE 0.25 0.25, noteF 0.5 0.25]
                                             ]
     test "simple repeat implicit start" do
       assertMelody "| CDE :|\r\n" [[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]]
     test "simple repeat then unrepeated" do
       assertMelody "|: CDE :| F |\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
                                          [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
-                                         [noteF 0.0 0.25],[] ]
+                                         [noteF 0.0 0.25] ]
     test "unrepeated then simple repeat" do
       assertMelody "| F |: CDE :|\r\n" [ [noteF 0.0 0.25],
                                          [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
-                                         [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
-                                         [] ]
+                                         [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]
+                                       ]
     test "alternate endings" do
       assertMelody "|: CD |1 E :|2 F |\r\n"  [ [noteC 0.0 0.25, noteD 0.25 0.25],
                                                [noteE 0.0 0.25],
@@ -145,7 +164,7 @@ repeatSuite =
                                                       [noteC 0.0 0.25, noteD 0.25 0.25],
                                                       [noteF 0.0 0.25],
                                                       [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
-                                                      [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],[] ]
+                                                      [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25] ]
 
 
 graceSuite :: Free TestF Unit
@@ -168,6 +187,7 @@ graceSuite =
     test "graces in broken rhythm >" do
       assertMelody "| C2>{E}D2 |\r\n" [ [noteC 0.0 0.75, noteE 0.75 0.025, noteD 0.775 0.225] ]
 
+
 atTempoSuite :: Free TestF Unit
 atTempoSuite =
   suite "set tempo externally" do
@@ -178,12 +198,21 @@ atTempoSuite =
     test "double tempo" do
       assertMelodyAtBpm "| CDE |\r\n" 240 [ [noteC 0.0 0.125, noteD 0.125 0.125, noteE 0.25 0.125]]
 
+
+phrasingSuite :: Free TestF Unit
+phrasingSuite =
+  suite "phrasing" do
+    test "split long phrase" do
+      -- we shpuld form a new phrase after the first 3 notes
+      assertMelodyShortPhrase "| CDE DEF |\r\n" [[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteD 0.0 0.25, noteE 0.25 0.25, noteF 0.5 0.25]]
+
 {-}
 bugSuite :: Free TestF Unit
 bugSuite =
-  suite "bugss" do
-    test "graces in broken rhythm >" do
-      assertMelody "| C2>{E}D2 |\r\n" [ [noteC 0.0 0.75, noteE 0.75 0.025, noteD 0.775 0.225] ]
+  suite "bugs" do
+    test "long phrase" do
+      -- we shpuld form a new phrase after the first 3 notes
+      assertMelodyShortPhrase "| CDE CDE |\r\n" [[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]]
 -}
 
 
