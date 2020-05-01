@@ -3,7 +3,7 @@ module Melody (melodySuite) where
 import Audio.SoundFont (MidiNote)
 import Audio.SoundFont.Melody (Melody)
 import Control.Monad.Free (Free)
-import Data.Abc.Melody (toMelody, toMelodyAtBpm)
+import Data.Abc.Melody (toMelodyAtBpm)
 import Data.Abc.Parser (parse)
 import Data.Either (Either(..))
 import Prelude (Unit, discard, show, (<>))

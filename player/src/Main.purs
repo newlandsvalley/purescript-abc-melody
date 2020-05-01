@@ -5,7 +5,7 @@ import Effect (Effect)
 import Effect.Aff (Aff)
 import Effect.Class (liftEffect)
 import Effect.Console (log)
-import Data.Either (Either(..), fromRight)
+import Data.Either (Either(..))
 import Data.Abc.Parser (parse)
 import Data.Abc.PlayableAbc (TempoedAbc(..))
 import Data.Midi.Instrument (InstrumentName(..))
@@ -14,6 +14,7 @@ import Halogen.Aff as HA
 import Halogen.VDom.Driver (runUI)
 import Halogen.PlayerComponent (component)
 import Prelude (Unit, unit, bind, discard, pure, (<>), ($))
+
 loadInstruments :: Aff (Array Instrument)
 loadInstruments =
   loadRemoteSoundFonts [ AcousticGrandPiano ]

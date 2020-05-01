@@ -3,7 +3,7 @@ module Data.Abc.Melody.Phrasing
 
 -- | This module breaks down a long melodic phrase into a set of smaller ones
 -- | so as to allow a player the chance to interrupt the playback.
--- | This can occur at the end of each sub-phrase
+-- | This can be invoked at the end of each sub-phrase
 
 import Prelude ((-), (>))
 import Data.Array (cons, null, reverse)
