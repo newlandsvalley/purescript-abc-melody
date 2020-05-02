@@ -8,15 +8,14 @@ module Data.Abc.Melody
 
 -- | Build a phrased, playable melody directly from a monophonic ABC Score
 
-import Audio.SoundFont (MidiNote)
-import Audio.SoundFont.Melody (MidiPhrase, Melody)
+import Audio.SoundFont.Melody (Melody)
 import Control.Monad.State (State, get, put, execState)
 import Data.Abc (AbcNote, AbcTune, Accidental(..), Bar, BarType, BodyPart(..), Broken(..), Grace, GraceableNote, Header(..), Mode(..),
                  ModifiedKeySignature, Music(..), MusicLine, NoteDuration, Pitch(..), PitchClass(..), Repeat(..), RestOrNote, TempoSignature, TuneBody)
 import Data.Abc.Accidentals as Accidentals
 import Data.Abc.Canonical as Canonical
 import Data.Abc.KeySignature (modifiedKeySet, pitchNumber, notesInChromaticScale)
-import Data.Abc.Melody.Types (MidiBar, MidiBars)
+import Data.Abc.Melody.Types
 import Data.Abc.Melody.RepeatBuilder (buildRepeatedMelody)
 import Data.Abc.Melody.RepeatSections (RepeatState, initialRepeatState, indexBar, finalBar)
 import Data.Abc.Metadata (dotFactor, getKeySig)
@@ -28,7 +27,7 @@ import Data.Foldable (foldl, oneOf)
 import Data.List (List(..), (:))
 import Data.List.NonEmpty (NonEmptyList)
 import Data.List.NonEmpty (head, length, tail, toList) as Nel
-import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
+import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
 import Data.Rational (Rational, fromInt, toNumber, (%))
 import Data.Tuple (Tuple(..))
 import Prelude (bind, identity, map, pure, ($), (||), (*), (+), (-), (/), (<>), (==))
@@ -58,20 +57,16 @@ graceFraction =
 
 defaultPhraseSize :: Number
 defaultPhraseSize =
-  0.6
+  0.7
 
 defaultBpm :: Int
 defaultBpm =
   120
-
+  
 -- | default to C Major (i.e. no accidental modifiers)
 defaultKey :: ModifiedKeySignature
 defaultKey =
   { keySignature: { pitchClass: C, accidental: Natural, mode: Major }, modifications: Nil }
-
--- the default volume
-defaultVolume :: Number
-defaultVolume =  0.5
 
 -- | Transform ABC into a playable melody using default settings for
 -- | BPM (120) and generated phrase size (0.6s)
@@ -123,7 +118,7 @@ buildMelody tstate =
     rawMelody = currentBar : tstate.rawMelody
   in
     buildRepeatedMelody rawMelody repeatState.sections tstate.phraseSize
-    
+
 
 -- | although nominally the returned value held in the State monad is
 -- | MidiBars, we don't use it.  Rather we constructb the final value
@@ -274,7 +269,6 @@ coalesceBar tstate barType =
   in
     tstate { currentBar = bar' }
 
-
 -- | The unit note length and tempo headers affect tempo
 -- | The key signature header affects pitch
 -- | other headers have no effect
@@ -300,7 +294,7 @@ addGraceableNoteToState tempoModifier tstate graceableNote =
         processNoteWithTie tempoModifier tstate graceableNote
     barAccidentals =
       addNoteToBarAccidentals abcNote tstate.currentBarAccidentals
-    tstate' = tstate { currentBar = tstate.currentBar { midiPhrase = notes }
+    tstate' = tstate { currentBar = tstate.currentBar { iPhrase = notes }
                      , lastNoteTied = newTie
                      , currentBarAccidentals = barAccidentals
                      }
@@ -318,7 +312,7 @@ addGraceableNoteToState tempoModifier tstate graceableNote =
 -- | is tied, then the (possibly combined) note is saved as the 'lastNoteTied' so that the whole
 -- | process will begin again at the next note.  If not tied, then the (possibly combined) note
 -- | is written into the current MIDI bar
-processNoteWithTie :: Rational -> TState -> GraceableNote -> Tuple MidiPhrase (Maybe GraceableNote)
+processNoteWithTie :: Rational -> TState -> GraceableNote -> Tuple IPhrase (Maybe GraceableNote)
 processNoteWithTie tempoModifier tstate graceableNote =
   let
     abcNote = graceableNote.abcNote
@@ -332,7 +326,7 @@ processNoteWithTie tempoModifier tstate graceableNote =
           if abcNote.tied then
             -- combine the notes, ignoring any grace notes from the incooming note
             -- and return the combined note as the new tied note
-            Tuple tstate.currentBar.midiPhrase (Just combinedGraceableNote)
+            Tuple tstate.currentBar.iPhrase (Just combinedGraceableNote)
           else
             let
               -- and emit the note but now including the extra offset of the graces
@@ -340,12 +334,11 @@ processNoteWithTie tempoModifier tstate graceableNote =
               phrase = emitGracesAndNote tempoModifier tstate combinedGraceableNote
             in
               -- write out the note to be held in bar state
-              Tuple (phrase <> tstate.currentBar.midiPhrase) Nothing
+              Tuple (phrase <> tstate.currentBar.iPhrase) Nothing
       _ ->
         if graceableNote.abcNote.tied then
           -- just set lastNoteTied
-          -- Tuple (tstate.currentBar.midiPhrase) (Just graceableGracedNote)
-          Tuple (tstate.currentBar.midiPhrase) (Just graceableNote)
+          Tuple (tstate.currentBar.iPhrase) (Just graceableNote)
         else
           let
             -- and emit the note but now including the extra offset of the graces
@@ -353,7 +346,7 @@ processNoteWithTie tempoModifier tstate graceableNote =
             phrase = emitGracesAndNote tempoModifier tstate graceableNote
           in
             -- write out the note to the current MIDI bar
-            Tuple (phrase <> tstate.currentBar.midiPhrase) Nothing
+            Tuple (phrase <> tstate.currentBar.iPhrase) Nothing
 
 -- ! increment the duration of a note
 -- | used to build up tied notes
@@ -366,7 +359,7 @@ incrementNoteDuration tiedNote duration =
     tiedNote { abcNote = combinedAbcNote }
 
 -- | emit a note preceded by any grace notes it possesses
-emitGracesAndNote :: Rational -> TState -> GraceableNote -> MidiPhrase
+emitGracesAndNote :: Rational -> TState -> GraceableNote -> IPhrase
 emitGracesAndNote tempoModifier tstate graceableNote =
   let
     graceAbcNotes =
@@ -379,7 +372,9 @@ emitGracesAndNote tempoModifier tstate graceableNote =
     -- work out the extra offset to the main note caused by the graces
     gracedNoteExtraOffset = sumDurations graceNotesPhrase
     gracedNote = curtailedGracedNote graceableNote.maybeGrace graceableNote.abcNote
-    mainNote = emitNotePlus tempoModifier tstate gracedNote gracedNoteExtraOffset
+    -- and we choose not to allow phrase boundaries if the note is graced
+    canPhrase = isNothing graceableNote.maybeGrace
+    mainNote = emitNotePlus tempoModifier tstate gracedNote gracedNoteExtraOffset canPhrase
   in
     Array.cons mainNote graceNotesPhrase
 
@@ -391,7 +386,7 @@ addChordalNoteToState tempoModifier tstate abcNote =
     barAccidentals =
       addNoteToBarAccidentals abcNote tstate.currentBarAccidentals
   in
-    tstate { currentBar = tstate.currentBar { midiPhrase = notes }
+    tstate { currentBar = tstate.currentBar { iPhrase = notes }
            , currentBarAccidentals = barAccidentals
            }
 
@@ -403,21 +398,23 @@ addChordalNotesToState tempoModifier tstate abcNotes =
 -- | process the incoming  note that is part of a chord.
 -- | Here, ties and grace notes preceding the note
 -- | are not supported
-processChordalNote ::  Rational -> TState -> AbcNote -> MidiPhrase
+processChordalNote ::  Rational -> TState -> AbcNote -> IPhrase
 processChordalNote tempoModifier tstate abcNote =
   let
-    newNote = emitNote tempoModifier tstate abcNote
+    -- we#re not allowed a phrase boundary at a chordal note
+    newNote = emitNote tempoModifier tstate abcNote false
   in
     case tstate.lastNoteTied of
       Just lastNote ->
         -- we don't support ties or grace notes into chords
         -- just emit the tied note before the chordal note
+        -- and we can form a new phrase at this note
         let
-          tiedNote = emitNote tempoModifier tstate lastNote.abcNote
+          tiedNote = emitNote tempoModifier tstate lastNote.abcNote true
         in
-          Array.cons newNote (Array.cons tiedNote tstate.currentBar.midiPhrase)
+          Array.cons newNote (Array.cons tiedNote tstate.currentBar.iPhrase)
       _ ->
-        Array.cons newNote tstate.currentBar.midiPhrase
+        Array.cons newNote tstate.currentBar.iPhrase
 
 -- | tuplets can now contain rests
 addRestOrNoteToState :: Rational -> TState-> RestOrNote -> TState
@@ -430,44 +427,45 @@ addRestOrNoteToState tempoModifier tstate restOrNote =
       addGraceableNoteToState tempoModifier tstate n
 
 -- | emit a MidiNote at the given offset held in TState
-emitNote :: Rational -> TState -> AbcNote -> MidiNote
-emitNote tempoModifier tstate abcNote =
-  emitNotePlus tempoModifier tstate abcNote 0.0
+emitNote :: Rational -> TState -> AbcNote -> Boolean -> INote
+emitNote tempoModifier tstate abcNote canPhrase =
+  emitNotePlus tempoModifier tstate abcNote 0.0 canPhrase
 
 -- | emit the note as before, but with an additional offset
-emitNotePlus :: Rational -> TState -> AbcNote -> Number ->  MidiNote
-emitNotePlus tempoModifier tstate abcNote extraOffset =
+emitNotePlus :: Rational -> TState -> AbcNote -> Number -> Boolean ->  INote
+emitNotePlus tempoModifier tstate abcNote extraOffset canPhrase =
   let
     pitch =
       toMidiPitch abcNote tstate.modifiedKeySignature tstate.currentBarAccidentals
     duration =
       noteDuration tstate.abcTempo (abcNote.duration * tempoModifier)
   in
-    midiNote (tstate.currentOffset + extraOffset) duration pitch
+    iNote (tstate.currentOffset + extraOffset) duration pitch canPhrase
 
 -- | emit the grace notes that may preface a 'graced' note
 -- | This is a bit hacky.  We don't update state after each emission bur instead
 -- | pace the notes by adding the duration of the previous note to the offset
 -- | of the one we're handling.  At the end, we pace the 'graced' note by adding
 -- | he overall grace note duration to its offset
-emitGraceNotes :: Rational -> TState -> List AbcNote -> Array MidiNote
+emitGraceNotes :: Rational -> TState -> List AbcNote -> Array INote
 emitGraceNotes tempoModifier tstate abcNotes =
   let
-    f :: Array MidiNote -> AbcNote -> Array MidiNote
+    f :: Array INote -> AbcNote -> Array INote
     f acc note =
-      [emitNotePlus tempoModifier tstate note (lastDuration acc)] <> acc
+      -- we choose not to allow phrase boundaries at grace notes
+      [emitNotePlus tempoModifier tstate note (lastDuration acc) false] <> acc
   in
     foldl f [] abcNotes
 
--- | sum the duration of a bunch of MidiNotes
+-- | sum the duration of a bunch of INotes
 -- | (used for grace notes)
-sumDurations :: Array MidiNote -> Number
+sumDurations :: Array INote -> Number
 sumDurations =
   foldl (\acc next -> acc + next.duration) 0.0
 
--- | find the duration of the final note in a bunch of MidiNotes
+-- | find the duration of the final note in a bunch of IiNotes
 -- | (used for grace notes)
-lastDuration :: Array MidiNote -> Number
+lastDuration :: Array INote -> Number
 lastDuration notes =
   maybe 0.0 _.duration $ Array.last notes
 
@@ -528,15 +526,14 @@ addNoteToBarAccidentals abcNote accs =
     acc ->
       Accidentals.add abcNote.pitchClass acc accs
 
-
--- | Generate a MIDI note destieed for the Melody buffer
-midiNote :: Number -> Number -> Int -> MidiNote
-midiNote offset duration pitch =
+-- | Generate an intermediate MIDI note destieed for the Melody buffer
+iNote :: Number -> Number -> Int -> Boolean -> INote
+iNote offset duration pitch canPhrase =
   { channel : 0              -- the MIDI channel
   , id  : pitch              -- the MIDI pitch number
   , timeOffset : offset      -- the time delay in seconds before the note is played
   , duration : duration      -- the duration of the note
-  , gain : defaultVolume     -- the volume (between 0 and 1)
+  , canPhrase  : canPhrase   -- can we form a new phrase at this note?
   }
 
 -- | work out the broken rhythm tempo
@@ -550,7 +547,7 @@ brokenTempo i isUp =
 -- | does the MIDI bar hold no notes (or any other MIDI messages)
 isBarEmpty :: MidiBar -> Boolean
 isBarEmpty mb =
-    Array.null mb.midiPhrase
+    Array.null mb.iPhrase
 
 -- | generic function to update the State
 -- | a is an ABC value
@@ -563,7 +560,6 @@ updateState f abc =
       tstate' = f tstate abc
     _ <- put tstate'
     pure tstate.rawMelody
-
 
 -- | Curtail the duration of the note by taking account of any grace notes
 -- | that it may have
@@ -584,8 +580,6 @@ curtailedGracedNote maybeGrace abcNote =
 individualGraceNote :: AbcNote -> AbcNote -> AbcNote
 individualGraceNote abcNote graceNote =
   graceNote { duration = graceFraction * abcNote.duration }
-
-
 
 -- | add a grace note (which may be defined outside the tuplet) to the first
 -- | note inside the tuplet (assuming it is a note and not a rest)
@@ -608,7 +602,6 @@ noteDuration abcTempo noteLength =
     beatLength = abcTempo.unitNoteLength / (1 % 4)
   in
     toNumber $ beatLength * noteLength / bps
-
 
 -- | Convert an ABC note pitch to a MIDI pitch.
 -- |
@@ -655,7 +648,7 @@ initialBar =
   { number : 0
   , repeat : Nothing
   , iteration : Nothing
-  , midiPhrase : []
+  , iPhrase : []
   }
 
 -- | build a new bar from a bar number and an ABC bar
@@ -664,7 +657,7 @@ buildNewBar i barType =
   {  number : i
   ,  repeat : barType.repeat
   ,  iteration : barType.iteration
-  ,  midiPhrase : []
+  ,  iPhrase : []
   }
 
 -- | this initial state is then threaded through the computation

@@ -66,6 +66,6 @@ trackSlice start finish mbs phraseSize  =
 accumulateMessages :: Number -> List MidiBar -> Melody
 accumulateMessages phraseSize mbs  =
   let
-    phrases =  toUnfoldable $ map _.midiPhrase mbs
+    phrases =  toUnfoldable $ map _.iPhrase mbs
   in
     rephraseSection phraseSize $ Array.reverse $ Array.concat phrases

@@ -16,7 +16,7 @@ gain = 0.5
 
 -- | this is a realistic size for individual phrases in the melody
 phraseSize :: Number
-phraseSize = 0.6
+phraseSize = 0.7
 
 -- | but this is what we'll use for the bulk of the tests - a melody well
 -- | then consist of a single phrase which can be tested more easily
@@ -187,7 +187,6 @@ graceSuite =
     test "graces in broken rhythm >" do
       assertMelody "| C2>{E}D2 |\r\n" [ [noteC 0.0 0.75, noteE 0.75 0.025, noteD 0.775 0.225] ]
 
-
 atTempoSuite :: Free TestF Unit
 atTempoSuite =
   suite "set tempo externally" do
@@ -198,13 +197,20 @@ atTempoSuite =
     test "double tempo" do
       assertMelodyAtBpm "| CDE |\r\n" 240 [ [noteC 0.0 0.125, noteD 0.125 0.125, noteE 0.25 0.125]]
 
-
 phrasingSuite :: Free TestF Unit
 phrasingSuite =
   suite "phrasing" do
     test "split long phrase" do
       -- we shpuld form a new phrase after the first 3 notes
       assertMelodyShortPhrase "| CDE DEF |\r\n" [[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteD 0.0 0.25, noteE 0.25 0.25, noteF 0.5 0.25]]
+    test "phrase boundary for chords" do
+      -- but we shouldn't break at any note in a chord
+      assertMelodyShortPhrase "| CDE [DE] F |\r\n" [[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25, noteD 0.75 0.25, noteE 0.75 0.25], [noteF 0.0 0.25]]
+    test "phrase boundary for grace notes" do
+      -- nor should we break at any grace note or at the graced note itself
+      assertMelodyShortPhrase "| CDE {D}E F |\r\n" [[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25, noteD 0.75 0.025, noteE 0.775 0.225], [noteF 0.0 0.25]]
+    test "long notes: one per phrase" do
+      assertMelodyShortPhrase "| C4D8E4F4 |\r\n" [[noteC 0.0 1.0], [noteD 0.0 2.0], [noteE 0.0 1.0], [noteF 0.0 1.0]]
 
 {-}
 bugSuite :: Free TestF Unit
