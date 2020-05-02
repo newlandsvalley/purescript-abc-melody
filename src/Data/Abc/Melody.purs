@@ -6,15 +6,17 @@ module Data.Abc.Melody
   , toMidiPitch
   , midiPitchOffset) where
 
+-- | Build a phrased, playable melody directly from a monophonic ABC Score
+
 import Audio.SoundFont (MidiNote)
 import Audio.SoundFont.Melody (MidiPhrase, Melody)
-import Control.Monad.State (State, get, put, evalState)
+import Control.Monad.State (State, get, put, execState)
 import Data.Abc (AbcNote, AbcTune, Accidental(..), Bar, BarType, BodyPart(..), Broken(..), Grace, GraceableNote, Header(..), Mode(..),
                  ModifiedKeySignature, Music(..), MusicLine, NoteDuration, Pitch(..), PitchClass(..), Repeat(..), RestOrNote, TempoSignature, TuneBody)
 import Data.Abc.Accidentals as Accidentals
 import Data.Abc.Canonical as Canonical
 import Data.Abc.KeySignature (modifiedKeySet, pitchNumber, notesInChromaticScale)
-import Data.Abc.Melody.Types (MidiBar)
+import Data.Abc.Melody.Types (MidiBar, MidiBars)
 import Data.Abc.Melody.RepeatBuilder (buildRepeatedMelody)
 import Data.Abc.Melody.RepeatSections (RepeatState, initialRepeatState, indexBar, finalBar)
 import Data.Abc.Metadata (dotFactor, getKeySig)
@@ -28,8 +30,8 @@ import Data.List.NonEmpty (NonEmptyList)
 import Data.List.NonEmpty (head, length, tail, toList) as Nel
 import Data.Maybe (Maybe(..), fromMaybe, isJust, maybe)
 import Data.Rational (Rational, fromInt, toNumber, (%))
-import Data.Tuple (Tuple(..), fst, snd)
-import Prelude (bind, identity, map, pure, ($), (||), (*), (+), (-), (/), (<>))
+import Data.Tuple (Tuple(..))
+import Prelude (bind, identity, map, pure, ($), (||), (*), (+), (-), (/), (<>), (==))
 
 {-  MidiPhrase treatment
 
@@ -58,68 +60,37 @@ defaultPhraseSize :: Number
 defaultPhraseSize =
   0.6
 
+defaultBpm :: Int
+defaultBpm =
+  120
+
+-- | default to C Major (i.e. no accidental modifiers)
+defaultKey :: ModifiedKeySignature
+defaultKey =
+  { keySignature: { pitchClass: C, accidental: Natural, mode: Major }, modifications: Nil }
+
+-- the default volume
+defaultVolume :: Number
+defaultVolume =  0.5
+
 -- | Transform ABC into a playable melody using default settings for
 -- | BPM (120) and generated phrase size (0.6s)
 toMelody :: AbcTune -> Melody
 toMelody tune =
-  evalState (transformTune tune) (initialState defaultPhraseSize tune)
-
+  toMelodyAtBpm tune defaultBpm defaultPhraseSize
 
 toMelodyAtBpm :: AbcTune -> Int -> Number -> Melody
 toMelodyAtBpm originalTune bpm phraseSize =
   let
-    tune = setBpm bpm originalTune
+    tune =
+      if (defaultBpm == bpm) then
+        originalTune
+      else
+        setBpm bpm originalTune
+    tstate =
+      execState (transformTune tune) (initialState phraseSize tune)
   in
-    evalState (transformTune tune) (initialState phraseSize tune)
-
--- | Convert an ABC note pitch to a MIDI pitch.
--- |
--- | AbcNote - the note in question
--- | ModifiedKeySignature - the key signature (possibly modified by extra accidentals)
--- | Accidentals - any notes in this bar which have previously been set explicitly to an accidental which are thus inherited by this note
--- | MidiPitch - the resulting pitch of the MIDI note
-toMidiPitch :: AbcNote -> ModifiedKeySignature -> Accidentals.Accidentals -> MidiPitch
-toMidiPitch n mks barAccidentals =
-  (n.octave * notesInChromaticScale) + midiPitchOffset n mks barAccidentals
-
--- | convert an AbcNote (pich class and accidental) to a pitch offset in a chromatic scale
-midiPitchOffset :: AbcNote -> ModifiedKeySignature -> Accidentals.Accidentals -> Int
-midiPitchOffset n mks barAccidentals =
-  let
-    inBarAccidental =
-      Accidentals.lookup n.pitchClass barAccidentals
-
-    inKeyAccidental =
-      -- accidentalImplicitInKey n.pitchClass mks
-      Accidentals.implicitInKeySet n.pitchClass (modifiedKeySet mks)
-
-    -- look first for an explicit note accidental, then for an explicit for the same note that occurred earlier in the bar and
-    -- finally look for an implicit accidental attached to this key signature
-    accidental =
-      case n.accidental of
-        Implicit ->
-          fromMaybe Natural $ oneOf ( inBarAccidental: inKeyAccidental: Nil )
-        _ ->  -- explict
-          n.accidental
-
-    -- the lookup pattern just uses sharps or flats (if there) or the empty String if not
-    accidentalPattern =
-      Canonical.keySignatureAccidental accidental
-
-    pattern =
-      Pitch { pitchClass : n.pitchClass, accidental : accidental }
-  in
-    pitchNumber pattern
-
-{-}
--- | a bar of MIDI music
-type MidiBar =
-  { number :: Int                         -- sequential from zero
-  , repeat :: Maybe Repeat                -- a repeat of some kind
-  , iteration :: Maybe Int                -- an iteration marker  (|1  or |2 etc)
-  , midiPhrase :: MidiPhrase              -- the notes in the bar
-  }
--}
+    buildMelody tstate
 
 -- | the state to thread through the computation
 type TState =
@@ -135,70 +106,43 @@ type TState =
     , rawMelody :: List MidiBar                        -- the growing list of completed bars
     }
 
-type TransformationState =
-  Tuple TState Melody
-
--- | The very first bar has a default tempo as the only message
-initialBar :: MidiBar
-initialBar =
-  { number : 0
-  , repeat : Nothing
-  , iteration : Nothing
-  , midiPhrase : []
-  }
-
--- | build a new bar from a bar number and an ABC bar
-buildNewBar :: Int -> BarType -> MidiBar
-buildNewBar i barType =
-  {  number : i
-  ,  repeat : barType.repeat
-  ,  iteration : barType.iteration
-  ,  midiPhrase : []
-  }
-
--- | default to C Major (i.e. no accidental modifiers)
-defaultKey :: ModifiedKeySignature
-defaultKey =
-  { keySignature: { pitchClass: C, accidental: Natural, mode: Major }, modifications: Nil }
-
--- the default volume
-defaultVolume :: Number
-defaultVolume =  0.5
-
--- | this initial state is then threaded through the computation
--- | but will be altered when ABC headers are encountered
-initialState :: Number -> AbcTune -> TransformationState
-initialState phraseSize tune =
+-- | Take the completed tune which exists in tstats largely as a flat
+-- | sequence of  midi bars and build a phrased meldody taking account
+-- | od all repeated sections and so on.
+buildMelody:: TState -> Melody
+buildMelody tstate =
   let
-    abcTempo = getAbcTempo tune
-    keySignature = fromMaybe defaultKey (getKeySig tune)
+    currentBar = tstate.currentBar
+
+    -- index the final bar and finalise the repear state
+    repeatState =
+      finalBar currentBar.iteration currentBar.repeat currentBar.number tstate.repeatState
+    -- ensure we incorporate the very last bar
+    tstate' = tstate { rawMelody = tstate.currentBar : tstate.rawMelody
+                     , repeatState = repeatState }
+    rawMelody = currentBar : tstate.rawMelody
   in
-    Tuple { modifiedKeySignature: keySignature
-          , abcTempo : abcTempo
-          , phraseSize : phraseSize
-          , currentBar : initialBar
-          , currentBarAccidentals : Accidentals.empty
-          , currentOffset : 0.0
-          , lastNoteTied : Nothing
-          , repeatState : initialRepeatState
-          , rawMelody : Nil
-          } []
+    buildRepeatedMelody rawMelody repeatState.sections tstate.phraseSize
+    
 
-transformTune :: AbcTune -> State TransformationState Melody
+-- | although nominally the returned value held in the State monad is
+-- | MidiBars, we don't use it.  Rather we constructb the final value
+-- | from the TState itself
+transformTune :: AbcTune -> State TState MidiBars
 transformTune tune =
-    -- we don't need to process the initial headers because
-    -- they're already adopted in the initial state
-    transformBody tune.body
+  -- we don't need to process the initial headers because
+  -- they're already adopted in the initial state
+  transformBody tune.body
 
-transformBody :: TuneBody -> State TransformationState Melody
+transformBody :: TuneBody -> State TState MidiBars
 transformBody Nil =
-    finaliseMelody
+  pure Nil
 transformBody (p : ps) =
   do
     _ <- transformBodyPart p
     transformBody ps
 
-transformBodyPart :: BodyPart -> State TransformationState Melody
+transformBodyPart :: BodyPart -> State TState MidiBars
 transformBodyPart bodyPart =
   case bodyPart of
     Score bars ->
@@ -206,34 +150,32 @@ transformBodyPart bodyPart =
     BodyInfo header ->
       transformHeader header
 
-transformBarList :: List Bar -> State TransformationState Melody
+transformBarList :: List Bar -> State TState MidiBars
 transformBarList Nil =
   do
-    tpl <- get
-    pure $ snd tpl
+    pure Nil
 transformBarList (b : bs) =
   do
     _ <- transformBar b
     transformBarList bs
 
-transformBar :: Bar -> State TransformationState Melody
+transformBar :: Bar -> State TState MidiBars
 transformBar bar =
   do
     -- save the bar to state
     _ <- updateState addBarToState bar.startLine
     transformMusicLine bar.music
 
-transformMusicLine :: MusicLine -> State TransformationState Melody
+transformMusicLine :: MusicLine -> State TState MidiBars
 transformMusicLine Nil =
   do
-    tpl <- get
-    pure $ snd tpl
+    pure Nil
 transformMusicLine (l : ls) =
   do
     _ <- transformMusic l
     transformMusicLine ls
 
-transformMusic :: Music -> State TransformationState Melody
+transformMusic :: Music -> State TState MidiBars
 transformMusic m =
   case m of
     Note graceableNote ->
@@ -282,8 +224,7 @@ transformMusic m =
 
     _ ->
       do
-        tpl <- get
-        pure $ snd tpl
+        pure Nil
 
 -- | add a bar to the state.  index it and add it to the growing list of bars
 addBarToState :: TState -> BarType -> TState
@@ -338,7 +279,7 @@ coalesceBar tstate barType =
 -- | The key signature header affects pitch
 -- | other headers have no effect
 -- | but ABC allows headers to change mid-tune
-transformHeader :: Header -> State TransformationState Melody
+transformHeader :: Header -> State TState MidiBars
 transformHeader h =
   case h of
     UnitNoteLength d ->
@@ -349,8 +290,7 @@ transformHeader h =
       updateState addTempoToState t
     _ ->
       do
-        tpl <- get
-        pure $ snd tpl
+        pure Nil
 
 addGraceableNoteToState :: Rational -> TState-> GraceableNote -> TState
 addGraceableNoteToState tempoModifier tstate graceableNote =
@@ -551,13 +491,6 @@ incrementTimeOffset tstate duration =
   in
     tstate { currentOffset = offset }
 
-{-}
--- | increment the time offset to pace the next note
-resetTimeOffset :: TState -> TState
-resetTimeOffset tstate  =
-  tstate { currentOffset = 0.0 }
--}
-
 -- | cater for a change in key signature
 addKeySigToState :: TState-> ModifiedKeySignature -> TState
 addKeySigToState tstate mks =
@@ -622,37 +555,14 @@ isBarEmpty mb =
 -- | generic function to update the State
 -- | a is an ABC value
 -- | f is a function that transforms the ABC value and adds it to the state
-updateState :: forall a. (TState -> a -> TState ) -> a -> State TransformationState Melody
+updateState :: forall a. (TState -> a -> TState ) -> a -> State TState MidiBars
 updateState f abc =
   do
-    tpl <- get
+    tstate <- get
     let
-      melody = snd tpl
-      tstate = fst tpl
       tstate' = f tstate abc
-      tpl' = Tuple tstate' melody
-    _ <- put tpl'
-    pure melody
-
--- | move the final bar from state into the final track and then build the recording
--- | complete the RepeatState and then build the MIDI melody
-finaliseMelody :: State TransformationState Melody
-finaliseMelody =
-  do
-    tpl <- get
-    let
-      melody = snd tpl
-      tstate = fst tpl
-      currentBar = tstate.currentBar
-
-      -- index the final bar and finalise the repear state
-      repeatState =
-        finalBar currentBar.iteration currentBar.repeat currentBar.number tstate.repeatState
-      -- ensure we incorporate the very last bar
-      tstate' = tstate { rawMelody = tstate.currentBar : tstate.rawMelody
-                       , repeatState = repeatState }
-      wholeMelody = buildRepeatedMelody tstate'.rawMelody tstate'.repeatState.sections tstate.phraseSize
-    pure wholeMelody
+    _ <- put tstate'
+    pure tstate.rawMelody
 
 
 -- | Curtail the duration of the note by taking account of any grace notes
@@ -700,17 +610,78 @@ noteDuration abcTempo noteLength =
     toNumber $ beatLength * noteLength / bps
 
 
--- temp Debug
-{-
-showBar :: MidiBar -> String
-showBar mb =
-  "barnum: " <> show (mb.number) <>  " message count: " <> show (length mb.midiMessages) <> " repeat " <>  show mb.repeat <>" "
-
-showBars :: List MidiBar -> String
-showBars mbs =
+-- | Convert an ABC note pitch to a MIDI pitch.
+-- |
+-- | AbcNote - the note in question
+-- | ModifiedKeySignature - the key signature (possibly modified by extra accidentals)
+-- | Accidentals - any notes in this bar which have previously been set explicitly to an accidental which are thus inherited by this note
+-- | MidiPitch - the resulting pitch of the MIDI note
+toMidiPitch :: AbcNote -> ModifiedKeySignature -> Accidentals.Accidentals -> MidiPitch
+toMidiPitch n mks barAccidentals =
+  (n.octave * notesInChromaticScale) + midiPitchOffset n mks barAccidentals
+-- | convert an AbcNote (pich class and accidental) to a pitch offset in a chromatic scale
+midiPitchOffset :: AbcNote -> ModifiedKeySignature -> Accidentals.Accidentals -> Int
+midiPitchOffset n mks barAccidentals =
   let
-    f :: MidiBar -> String -> String
-    f mb acc = acc <> showBar mb
+    inBarAccidental =
+      Accidentals.lookup n.pitchClass barAccidentals
+
+    inKeyAccidental =
+      -- accidentalImplicitInKey n.pitchClass mks
+      Accidentals.implicitInKeySet n.pitchClass (modifiedKeySet mks)
+
+    -- look first for an explicit note accidental, then for an explicit for the same note that occurred earlier in the bar and
+    -- finally look for an implicit accidental attached to this key signature
+    accidental =
+      case n.accidental of
+        Implicit ->
+          fromMaybe Natural $ oneOf ( inBarAccidental: inKeyAccidental: Nil )
+        _ ->  -- explict
+          n.accidental
+
+    -- the lookup pattern just uses sharps or flats (if there) or the empty String if not
+    accidentalPattern =
+      Canonical.keySignatureAccidental accidental
+
+    pattern =
+      Pitch { pitchClass : n.pitchClass, accidental : accidental }
   in
-   foldr f "" mbs
--}
+    pitchNumber pattern
+
+
+-- | The very first bar has a default tempo as the only message
+initialBar :: MidiBar
+initialBar =
+  { number : 0
+  , repeat : Nothing
+  , iteration : Nothing
+  , midiPhrase : []
+  }
+
+-- | build a new bar from a bar number and an ABC bar
+buildNewBar :: Int -> BarType -> MidiBar
+buildNewBar i barType =
+  {  number : i
+  ,  repeat : barType.repeat
+  ,  iteration : barType.iteration
+  ,  midiPhrase : []
+  }
+
+-- | this initial state is then threaded through the computation
+-- | but will be altered when ABC headers are encountered
+initialState :: Number -> AbcTune -> TState
+initialState phraseSize tune =
+  let
+    abcTempo = getAbcTempo tune
+    keySignature = fromMaybe defaultKey (getKeySig tune)
+  in
+    { modifiedKeySignature: keySignature
+      , abcTempo : abcTempo
+      , phraseSize : phraseSize
+      , currentBar : initialBar
+      , currentBarAccidentals : Accidentals.empty
+      , currentOffset : 0.0
+      , lastNoteTied : Nothing
+      , repeatState : initialRepeatState
+      , rawMelody : Nil
+      }

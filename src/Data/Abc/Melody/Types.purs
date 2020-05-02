@@ -1,5 +1,6 @@
 module Data.Abc.Melody.Types where
 
+import Data.List (List)
 import Data.Maybe (Maybe)
 import Data.Abc (Repeat)
 import Audio.SoundFont.Melody (MidiPhrase)
@@ -11,3 +12,5 @@ type MidiBar =
   , iteration :: Maybe Int                -- an iteration marker  (|1  or |2 etc)
   , midiPhrase :: MidiPhrase              -- the notes in the bar
   }
+
+type MidiBars = List MidiBar
