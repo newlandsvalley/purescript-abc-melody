@@ -62,7 +62,7 @@ defaultPhraseSize =
 defaultBpm :: Int
 defaultBpm =
   120
-  
+
 -- | default to C Major (i.e. no accidental modifiers)
 defaultKey :: ModifiedKeySignature
 defaultKey =
@@ -116,6 +116,7 @@ buildMelody tstate =
     tstate' = tstate { rawMelody = tstate.currentBar : tstate.rawMelody
                      , repeatState = repeatState }
     rawMelody = currentBar : tstate.rawMelody
+    -- foo = spy "repeat sections"  tstate'.repeatState.sections
   in
     buildRepeatedMelody rawMelody repeatState.sections tstate.phraseSize
 

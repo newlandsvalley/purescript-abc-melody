@@ -67,7 +67,8 @@ melodySuite = do
   graceSuite
   atTempoSuite
   phrasingSuite
-  -- bugSuite
+   -- bugSuite
+
 
 transformationSuite :: Free TestF Unit
 transformationSuite =
@@ -216,11 +217,14 @@ phrasingSuite =
 bugSuite :: Free TestF Unit
 bugSuite =
   suite "bugs" do
-    test "long phrase" do
-      -- we shpuld form a new phrase after the first 3 notes
-      assertMelodyShortPhrase "| CDE CDE |\r\n" [[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]]
+    test "alternate endings then repeat" do
+      assertMelody "|: CD |1 E :|2 F |: CDE :|\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25],
+         [noteE 0.0 0.25],
+         [noteC 0.0 0.25, noteD 0.25 0.25],
+         [noteF 0.0 0.25],
+         [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
+         [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25] ]
 -}
-
 
 noteC :: Number -> Number -> MidiNote
 noteC offset length =

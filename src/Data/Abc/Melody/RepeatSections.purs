@@ -18,10 +18,10 @@ import Data.Generic.Rep
 import Data.Generic.Rep.Eq (genericEq)
 import Data.Generic.Rep.Show (genericShow)
 import Data.List (List(..), (:))
-import Data.Maybe (Maybe(..), isJust)
+import Data.Maybe (Maybe(..), isJust, fromMaybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Tuple (Tuple(..))
-import Prelude (class Eq, class Show, (==), (&&), not)
+import Prelude (class Eq, class Show, (==), (>=), (||), (&&), not)
 
 -- | a section of the tune (possibly repeated)
 newtype Section = Section
@@ -82,7 +82,7 @@ finalBar iteration repeat barNumber r =
       _ -> false
     repeatState = endSection barNumber isRepeatEnd r
   in
-    if not (isNullSection r.current) then
+    if not (isDeadSection r.current) then
       accumulateSection barNumber false repeatState
     else
       repeatState
@@ -137,15 +137,25 @@ accumulateSection pos isRepeatStart r =
   let
     newCurrent = newSection pos isRepeatStart
   in
-    if not (isNullSection r.current) then
+    if not (isDeadSection r.current) then
       r { sections = r.current : r.sections, current = newCurrent}
     else
       r { current = newCurrent }
 
 -- return true if the section is devoid of any useful content
+isDeadSection :: Section -> Boolean
+isDeadSection (Section s) =
+  let
+    start = fromMaybe 0 s.start
+    end = fromMaybe 0 s.end
+  in
+    (start >= end) && not s.isRepeated
+
+{-
 isNullSection :: Section -> Boolean
 isNullSection s =
-  s == nullSection
+  (s == nullSection)
+-}
 
 -- return true if the first (variant) ending is set
 hasFirstEnding :: Section -> Boolean
