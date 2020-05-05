@@ -67,7 +67,7 @@ melodySuite = do
   graceSuite
   atTempoSuite
   phrasingSuite
-   -- bugSuite
+  -- bugSuite
 
 
 transformationSuite :: Free TestF Unit
@@ -213,10 +213,32 @@ phrasingSuite =
     test "long notes: one per phrase" do
       assertMelodyShortPhrase "| C4D8E4F4 |\r\n" [[noteC 0.0 1.0], [noteD 0.0 2.0], [noteE 0.0 1.0], [noteF 0.0 1.0]]
 
-{-}
+
+
 bugSuite :: Free TestF Unit
 bugSuite =
   suite "bugs" do
+    test "pair of repeats" do
+      assertMelody "|: CDE :|: DEF :|\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
+         [noteD 0.0 0.25, noteE 0.25 0.25, noteF 0.5 0.25], [noteD 0.0 0.25, noteE 0.25 0.25, noteF 0.5 0.25]
+        ]
+
+{-}
+    test "alternate endings" do
+      assertMelody "|: CD |1 E :|2 F |\r\n"  [ [noteC 0.0 0.25, noteD 0.25 0.25],
+          [noteE 0.0 0.25],
+          [noteC 0.0 0.25, noteD 0.25 0.25],
+          [noteF 0.0 0.25] ]
+    test "lead-in then repeat" do
+      assertMelody "FC |: CDE :|\r\n"  [[noteF 0.0 0.25, noteC 0.25 0.25],[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
+                                    [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]]
+    test "simple repeat" do
+      -- for some reason, terminated by an empty phrase
+      assertMelody "|: CDE :|\r\n" [[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]]
+    test "simple repeat implicit start" do
+      assertMelody "| CDE :|\r\n" [[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]]
+    test "notes" do
+      assertMelody "| CDE |\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]]
     test "alternate endings then repeat" do
       assertMelody "|: CD |1 E :|2 F |: CDE :|\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25],
          [noteE 0.0 0.25],
@@ -224,7 +246,9 @@ bugSuite =
          [noteF 0.0 0.25],
          [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
          [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25] ]
--}
+  -}
+
+
 
 noteC :: Number -> Number -> MidiNote
 noteC offset length =

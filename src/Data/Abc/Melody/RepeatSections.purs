@@ -8,20 +8,34 @@ module Data.Abc.Melody.RepeatSections
         ( Section(..)
         , Sections
         , RepeatState
+        , Label
         , initialRepeatState
         , indexBar
         , finalBar
         ) where
 
-import Data.Abc (Repeat(..))
 import Data.Generic.Rep
+
+import Data.Abc (Repeat(..))
 import Data.Generic.Rep.Eq (genericEq)
 import Data.Generic.Rep.Show (genericShow)
-import Data.List (List(..), (:))
+import Data.List (List(..), (:), last, length)
 import Data.Maybe (Maybe(..), isJust, fromMaybe)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Tuple (Tuple(..))
-import Prelude (class Eq, class Show, (==), (>=), (||), (&&), not)
+import Prelude (class Eq, class Show, not, (&&), (==), (>=))
+
+data Label =
+    LeadIn
+  | APart
+  | OtherPart
+
+instance showLabel :: Show Label where
+  show LeadIn = "Lead-in"
+  show APart = "A Part"
+  show OtherPart = "Other Part"
+
+derive instance eqLabel :: Eq Label
 
 -- | a section of the tune (possibly repeated)
 newtype Section = Section
@@ -30,6 +44,7 @@ newtype Section = Section
     , secondEnding :: Maybe Int
     , end :: Maybe Int
     , isRepeated :: Boolean
+    , label :: Label
     }
 
 derive instance newtypeSection :: Newtype Section _
@@ -135,10 +150,13 @@ endAndStartSection endPos isRepeatEnd isRepeatStart r =
 accumulateSection :: Int -> Boolean -> RepeatState -> RepeatState
 accumulateSection pos isRepeatStart r =
   let
+    -- label the existing current section to see if it is an Intor or A Part
+    existingCurrent = labelCurrentSection r
+    -- prepare the new current section
     newCurrent = newSection pos isRepeatStart
   in
     if not (isDeadSection r.current) then
-      r { sections = r.current : r.sections, current = newCurrent}
+      r { sections = existingCurrent : r.sections, current = newCurrent}
     else
       r { current = newCurrent }
 
@@ -151,11 +169,40 @@ isDeadSection (Section s) =
   in
     (start >= end) && not s.isRepeated
 
-{-
-isNullSection :: Section -> Boolean
-isNullSection s =
-  (s == nullSection)
--}
+-- return true if the saved sections include a lead-in
+hasLeadIn :: Sections -> Boolean
+hasLeadIn sections =
+  case last sections of
+    Just (Section s) ->
+      s.label == LeadIn
+    Nothing ->
+      false
+
+-- | return true if the current section defines a lead-in bar
+isLeadIn :: Section -> Boolean
+isLeadIn (Section s) =
+  (not s.isRepeated) && (1 == fromMaybe 0 s.end)
+
+-- label the current section from the RepeatState
+-- (do this when the current section is completed)
+labelCurrentSection :: RepeatState -> Section
+labelCurrentSection rs =
+  let
+    (Section current) = rs.current
+  in
+    if (hasLeadIn rs.sections) then
+      if (length rs.sections == 1) then
+        Section current { label = APart }
+      else
+        Section current
+  else
+    if (length rs.sections == 0) then
+      if (isLeadIn rs.current) then --
+        Section current { label = LeadIn }
+      else
+        Section current { label = APart }
+    else
+      Section current
 
 -- return true if the first (variant) ending is set
 hasFirstEnding :: Section -> Boolean
@@ -190,6 +237,7 @@ newSection pos isRepeated = Section
   , secondEnding : Nothing
   , end : Just 0
   , isRepeated : isRepeated
+  , label : OtherPart   -- effectively unlabelled at the start
   }
 
 -- a 'null' section
