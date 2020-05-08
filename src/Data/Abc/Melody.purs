@@ -117,6 +117,8 @@ buildMelody tstate =
                      , repeatState = repeatState }
     rawMelody = currentBar : tstate.rawMelody
     -- foo = spy "repeat sections"  tstate'.repeatState.sections
+    -- bad = spy "raw melody" tstate'.rawMelody
+    -- bar = spy "intro bars"  tstate'.repeatState.intro
   in
     buildRepeatedMelody rawMelody repeatState.sections tstate.phraseSize
 

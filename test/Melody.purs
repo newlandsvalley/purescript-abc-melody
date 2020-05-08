@@ -218,27 +218,35 @@ phrasingSuite =
 bugSuite :: Free TestF Unit
 bugSuite =
   suite "bugs" do
+
     test "pair of repeats" do
-      assertMelody "|: CDE :|: DEF :|\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
+      assertMelody "|: ABc | def |1 fed :|2 eee |\r\n" []  
+
+
+   {-}
+    test "simple repeat" do
+      assertMelody "|: CD | E :|: DEF :|\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
          [noteD 0.0 0.25, noteE 0.25 0.25, noteF 0.5 0.25], [noteD 0.0 0.25, noteE 0.25 0.25, noteF 0.5 0.25]
         ]
 
-{-}
     test "alternate endings" do
       assertMelody "|: CD |1 E :|2 F |\r\n"  [ [noteC 0.0 0.25, noteD 0.25 0.25],
           [noteE 0.0 0.25],
           [noteC 0.0 0.25, noteD 0.25 0.25],
           [noteF 0.0 0.25] ]
+
+
     test "lead-in then repeat" do
-      assertMelody "FC |: CDE :|\r\n"  [[noteF 0.0 0.25, noteC 0.25 0.25],[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
-                                    [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]]
+      assertMelody "FC |: CD | E :|\r\n"  [[noteF 0.0 0.25, noteC 0.25 0.25],[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
+
     test "simple repeat" do
       -- for some reason, terminated by an empty phrase
-      assertMelody "|: CDE :|\r\n" [[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]]
+      assertMelody "|: CD | E :|\r\n" [[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]]
     test "simple repeat implicit start" do
-      assertMelody "| CDE :|\r\n" [[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]]
+      assertMelody "| C | DE :|\r\n" [[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]]
     test "notes" do
-      assertMelody "| CDE |\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]]
+      assertMelody "| CD | E |\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]]
+
     test "alternate endings then repeat" do
       assertMelody "|: CD |1 E :|2 F |: CDE :|\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25],
          [noteE 0.0 0.25],
@@ -246,7 +254,8 @@ bugSuite =
          [noteF 0.0 0.25],
          [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
          [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25] ]
-  -}
+    -}
+
 
 
 
