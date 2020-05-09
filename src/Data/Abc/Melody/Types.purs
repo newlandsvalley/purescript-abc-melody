@@ -3,7 +3,11 @@ module Data.Abc.Melody.Types where
 import Data.List (List)
 import Data.Maybe (Maybe)
 import Data.Abc (Repeat)
-import Audio.SoundFont.Melody (MidiPhrase)
+import Data.Generic.Rep
+import Data.Generic.Rep.Eq (genericEq)
+import Data.Generic.Rep.Show (genericShow)
+import Data.Newtype (class Newtype)
+import Prelude (class Eq, class Show)
 
 
 -- | An intermediate note representation
@@ -32,3 +36,40 @@ type MidiBar =
   }
 
 type MidiBars = List MidiBar
+
+data Label =
+    LeadIn
+  | APart
+  | OtherPart
+
+instance showLabel :: Show Label where
+  show LeadIn = "Lead-in"
+  show APart = "A Part"
+  show OtherPart = "Other Part"
+
+derive instance eqLabel :: Eq Label
+
+-- | a section of the tune (possibly repeated)
+newtype Section = Section
+    { start :: Maybe Int
+    , firstEnding :: Maybe Int
+    , secondEnding :: Maybe Int
+    , end :: Maybe Int
+    , isRepeated :: Boolean
+    , label :: Label
+    }
+
+derive instance newtypeSection :: Newtype Section _
+derive instance genericSection :: Generic Section _
+instance eqSection :: Eq Section where  eq = genericEq
+instance showSection :: Show Section where show = genericShow
+
+-- | a set of sections
+type Sections = List Section
+
+-- | the current repeat state
+type RepeatState =
+    { current :: Section
+    , sections :: Sections
+    , intro :: Array Int          -- indices of 2 bars that form the intro
+    }

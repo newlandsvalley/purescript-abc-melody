@@ -13,8 +13,7 @@ import Data.Array as Array
 import Data.Maybe (Maybe(..))
 import Data.Foldable (foldl)
 import Audio.SoundFont.Melody (Melody)
-import Data.Abc.Melody.Types (MidiBar)
-import Data.Abc.Melody.RepeatSections (Section(..), Sections)
+import Data.Abc.Melody.Types (MidiBar, Section(..), Sections)
 import Data.Abc.Melody.Phrasing (rephraseSection)
 
 -- | build any repeated section into an extended melody with all repeats realised

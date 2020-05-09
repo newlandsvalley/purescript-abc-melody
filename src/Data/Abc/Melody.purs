@@ -17,7 +17,7 @@ import Data.Abc.Canonical as Canonical
 import Data.Abc.KeySignature (modifiedKeySet, pitchNumber, notesInChromaticScale)
 import Data.Abc.Melody.Types
 import Data.Abc.Melody.RepeatBuilder (buildRepeatedMelody)
-import Data.Abc.Melody.RepeatSections (RepeatState, initialRepeatState, indexBar, finalBar)
+import Data.Abc.Melody.RepeatSections (initialRepeatState, indexBar, finalBar)
 import Data.Abc.Metadata (dotFactor, getKeySig)
 import Data.Abc.Tempo (AbcTempo, getAbcTempo, setBpm, beatsPerSecond)
 import Data.Array as Array

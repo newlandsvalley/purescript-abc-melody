@@ -5,67 +5,22 @@
 -- |    |: ABC |1 de :|2 fg |
 -- | the very first repeat start marker is optional and often absent
 module Data.Abc.Melody.RepeatSections
-        ( Section(..)
-        , Sections
-        , RepeatState
-        , Label
-        , initialRepeatState
+        ( initialRepeatState
         , indexBar
         , finalBar
         ) where
 
-import Data.Generic.Rep
 
 import Data.Abc (Repeat(..))
-import Data.Array as Array
-import Data.Generic.Rep.Eq (genericEq)
-import Data.Generic.Rep.Show (genericShow)
 import Data.List (List(..), last, length, (:))
 import Data.Maybe (Maybe(..), isJust, fromMaybe)
-import Data.Newtype (class Newtype, unwrap)
+import Data.Newtype (unwrap)
 import Data.Tuple (Tuple(..))
-import Prelude (class Eq, class Show, not, (&&), (==), (+), (-), (>=), (<=), (<>), ($))
-
-
+import Data.Abc.Melody.Types
+import Data.Abc.Melody.Intro (identifyIntro)
+import Prelude (not, (&&), (==), (>=))
 
 import Debug.Trace (spy, trace, traceM)
-
-data Label =
-    LeadIn
-  | APart
-  | OtherPart
-
-instance showLabel :: Show Label where
-  show LeadIn = "Lead-in"
-  show APart = "A Part"
-  show OtherPart = "Other Part"
-
-derive instance eqLabel :: Eq Label
-
--- | a section of the tune (possibly repeated)
-newtype Section = Section
-    { start :: Maybe Int
-    , firstEnding :: Maybe Int
-    , secondEnding :: Maybe Int
-    , end :: Maybe Int
-    , isRepeated :: Boolean
-    , label :: Label
-    }
-
-derive instance newtypeSection :: Newtype Section _
-derive instance genericSection :: Generic Section _
-instance eqSection :: Eq Section where  eq = genericEq
-instance showSection :: Show Section where show = genericShow
-
--- | a set of sections
-type Sections = List Section
-
--- | the current repeat state
-type RepeatState =
-    { current :: Section
-    , sections :: Sections
-    , intro :: Array Int          -- indices of 2 bars that form the intro
-    }
 
 -- | initial repeats i.e. no repeats yet
 initialRepeatState :: RepeatState
@@ -223,41 +178,7 @@ labelCurrentSection rs =
     else
       Section current
 
--- | identify the bars that form the intro.  In most cases this will be the final
--- | 2 bars of the A section but modified if there are alternate endings or if there
--- | is a degenerate A section with less than 2 identifiable bars
-identifyIntro :: Section -> Array Int
-identifyIntro (Section section) =
-  let
-    introBars =
-      case section.label of
-        APart ->
-          case section.secondEnding of
-            -- we have an alterbative ending
-            Just se ->
-              let
-                end = fromMaybe se section.end
-                fe = fromMaybe se section.firstEnding
-              in
-                -- which is of at least 2 bars length
-                if ((end - se) >= 2) then
-                  [se, se + 1]
-                -- which is only 1 bar so we prepend the final bar before the repeat
-                else
-                  [fe -1, se ]
-            _ ->
-              -- there is no alternative ending - either unrepeated or a simple repeat
-              -- whic is treated identially by identifying the last 2 bars
-              let
-                end = fromMaybe 0 section.end
-              in
-                [end - 2, end -1]
-        _ ->
-          []
-  in
-    -- removing bars numbered less that 1 sorts out degenerate cases of melodies
-    -- which have only 1 bar
-    Array.filter (\x -> x >= 0) introBars
+
 
 -- return true if the first (variant) ending is set
 hasFirstEnding :: Section -> Boolean
