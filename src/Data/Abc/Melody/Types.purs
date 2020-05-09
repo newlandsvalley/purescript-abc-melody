@@ -38,12 +38,14 @@ type MidiBar =
 type MidiBars = List MidiBar
 
 data Label =
-    LeadIn
+    LeadIn     -- lead-in bars existimng in the tune
+  | Intro      --- artificially generated Intro
   | APart
   | OtherPart
 
 instance showLabel :: Show Label where
   show LeadIn = "Lead-in"
+  show Intro = "Intro"
   show APart = "A Part"
   show OtherPart = "Other Part"
 

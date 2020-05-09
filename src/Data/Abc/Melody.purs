@@ -1,8 +1,8 @@
 -- | Conversion of an ABC tune to MIDI.
 module Data.Abc.Melody
   ( MidiPitch
+  , toMelodyDefault
   , toMelody
-  , toMelodyAtBpm
   , toMidiPitch
   , midiPitchOffset) where
 
@@ -18,6 +18,7 @@ import Data.Abc.KeySignature (modifiedKeySet, pitchNumber, notesInChromaticScale
 import Data.Abc.Melody.Types
 import Data.Abc.Melody.RepeatBuilder (buildRepeatedMelody)
 import Data.Abc.Melody.RepeatSections (initialRepeatState, indexBar, finalBar)
+import Data.Abc.Melody.Intro (appendIntroSections)
 import Data.Abc.Metadata (dotFactor, getKeySig)
 import Data.Abc.Tempo (AbcTempo, getAbcTempo, setBpm, beatsPerSecond)
 import Data.Array as Array
@@ -70,12 +71,12 @@ defaultKey =
 
 -- | Transform ABC into a playable melody using default settings for
 -- | BPM (120) and generated phrase size (0.6s)
-toMelody :: AbcTune -> Melody
-toMelody tune =
-  toMelodyAtBpm tune defaultBpm defaultPhraseSize
+toMelodyDefault :: AbcTune -> Melody
+toMelodyDefault tune =
+  toMelody tune defaultBpm defaultPhraseSize false
 
-toMelodyAtBpm :: AbcTune -> Int -> Number -> Melody
-toMelodyAtBpm originalTune bpm phraseSize =
+toMelody :: AbcTune -> Int -> Number -> Boolean -> Melody
+toMelody originalTune bpm phraseSize generateIntro =
   let
     tune =
       if (defaultBpm == bpm) then
@@ -85,7 +86,7 @@ toMelodyAtBpm originalTune bpm phraseSize =
     tstate =
       execState (transformTune tune) (initialState phraseSize tune)
   in
-    buildMelody tstate
+    buildMelody tstate generateIntro
 
 -- | the state to thread through the computation
 type TState =
@@ -104,14 +105,19 @@ type TState =
 -- | Take the completed tune which exists in tstats largely as a flat
 -- | sequence of  midi bars and build a phrased meldody taking account
 -- | od all repeated sections and so on.
-buildMelody:: TState -> Melody
-buildMelody tstate =
+buildMelody:: TState -> Boolean -> Melody
+buildMelody tstate generateIntro =
   let
     currentBar = tstate.currentBar
 
     -- index the final bar and finalise the repear state
-    repeatState =
+    finalRepeatState =
       finalBar currentBar.iteration currentBar.repeat currentBar.number tstate.repeatState
+    repeatState =
+      if generateIntro then
+        appendIntroSections finalRepeatState
+      else
+        finalRepeatState
     -- ensure we incorporate the very last bar
     tstate' = tstate { rawMelody = tstate.currentBar : tstate.rawMelody
                      , repeatState = repeatState }

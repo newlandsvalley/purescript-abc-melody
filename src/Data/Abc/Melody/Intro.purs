@@ -1,18 +1,28 @@
 module Data.Abc.Melody.Intro
-  ( identifyIntro) where
+  ( identifyIntro
+  , appendIntroSections) where
 
 -- | Generate a 2-bar Intro by analysomg the A Part within the sections
 -- | and using (where possible) the final bars if the A Part.  These will live
 -- | in different places depending on the kind of repeat.
 
-import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Array (filter, toUnfoldable)
 import Data.Abc.Melody.Types
-import Prelude (($), (>=), (-), (+), map)
+
+import Data.Array (filter, toUnfoldable)
+import Data.Maybe (Maybe(..), fromMaybe)
+import Prelude (map, ($), (+), (-), (>=), (<>))
+
+appendIntroSections :: RepeatState -> RepeatState
+appendIntroSections repeatState =
+  let
+    sections =
+      repeatState.sections <> makeIntroSections repeatState.intro
+  in repeatState { sections = sections }
 
 -- | identify the bars that form the intro.  In most cases this will be the final
 -- | 2 bars of the A section but modified if there are alternate endings or if there
 -- | is a degenerate A section with less than 2 identifiable bars
+-- | We need to build them in reverse oder in line with the rest of the melody
 identifyIntro :: Section -> Array Int
 identifyIntro (Section section) =
   let
@@ -28,17 +38,20 @@ identifyIntro (Section section) =
               in
                 -- which is of at least 2 bars length
                 if ((end - se) >= 2) then
-                  [se, se + 1]
+                  [se + 1, se]
+                  --  [se, se + 1]
                 -- which is only 1 bar so we prepend the final bar before the repeat
                 else
-                  [fe -1, se ]
+                  [se, fe -1]
+                  --  [fe -1, se ]
             _ ->
               -- there is no alternative ending - either unrepeated or a simple repeat
               -- whic is treated identially by identifying the last 2 bars
               let
                 end = fromMaybe 0 section.end
               in
-                [end - 2, end -1]
+                [end - 1, end -2]
+                --  [end - 2, end -1]
         _ ->
           []
   in
@@ -58,7 +71,7 @@ makeIntroSections introBars =
       , secondEnding : Nothing
       , end : Just (start + 1)
       , isRepeated : false
-      , label : LeadIn
+      , label : Intro
       }
   in
     toUnfoldable $ map makeSection introBars

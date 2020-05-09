@@ -3,12 +3,14 @@ module Melody (melodySuite) where
 import Audio.SoundFont (MidiNote)
 import Audio.SoundFont.Melody (Melody)
 import Control.Monad.Free (Free)
-import Data.Abc.Melody (toMelodyAtBpm)
+import Data.Abc.Melody (toMelody)
 import Data.Abc.Parser (parse)
+import Data.Array (take)
 import Data.Either (Either(..))
 import Prelude (Unit, discard, show, (<>))
 import Test.Unit (Test, TestF, suite, test, failure)
 import Test.Unit.Assert as Assert
+import Test.Samples
 
 
 gain :: Number
@@ -28,7 +30,7 @@ assertMelody s expected =
   case (parse s) of
     Right tune ->
       let
-        melody = toMelodyAtBpm tune 120 longPhraseSize
+        melody = toMelody tune 120 longPhraseSize false
       in
         Assert.equal expected melody
 
@@ -40,7 +42,7 @@ assertMelodyAtBpm s bpm expected =
   case (parse s) of
     Right tune ->
       let
-        melody = toMelodyAtBpm tune bpm longPhraseSize
+        melody = toMelody tune bpm longPhraseSize false
       in
         Assert.equal expected melody
 
@@ -52,9 +54,23 @@ assertMelodyShortPhrase s expected =
   case (parse s) of
     Right tune ->
       let
-        melody = toMelodyAtBpm tune 120 phraseSize
+        melody = toMelody tune 120 phraseSize false
       in
         Assert.equal expected melody
+
+    Left err ->
+      failure ("parse failed: " <> (show err))
+
+
+assertIntro :: String -> Melody -> Test
+assertIntro s expected =
+  case (parse s) of
+    Right tune ->
+      let
+        melody = toMelody tune 120 longPhraseSize true
+        intro = take 2 melody
+      in
+        Assert.equal expected intro
 
     Left err ->
       failure ("parse failed: " <> (show err))
@@ -67,6 +83,7 @@ melodySuite = do
   graceSuite
   atTempoSuite
   phrasingSuite
+
   -- bugSuite
 
 
@@ -218,12 +235,14 @@ phrasingSuite =
 bugSuite :: Free TestF Unit
 bugSuite =
   suite "bugs" do
+    test "simple repeat intro" do
+      assertIntro augustsson []
+    {-}
 
     test "pair of repeats" do
-      assertMelody "|: ABc | def |1 fed :|2 eee |\r\n" []  
+      assertMelody "|: ABc | def |1 fed :|2 eee |\r\n" []
 
 
-   {-}
     test "simple repeat" do
       assertMelody "|: CD | E :|: DEF :|\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
          [noteD 0.0 0.25, noteE 0.25 0.25, noteF 0.5 0.25], [noteD 0.0 0.25, noteE 0.25 0.25, noteF 0.5 0.25]
