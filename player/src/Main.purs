@@ -7,7 +7,7 @@ import Effect.Class (liftEffect)
 import Effect.Console (log)
 import Data.Either (Either(..))
 import Data.Abc.Parser (parse)
-import Data.Abc.PlayableAbc (TempoedAbc(..))
+import Data.Abc.PlayableAbc (PlayableAbc(..))
 import Data.Midi.Instrument (InstrumentName(..))
 import Halogen as H
 import Halogen.Aff as HA
@@ -29,8 +29,8 @@ main = HA.runHalogenAff do
   case etune of
     Right abcTune -> do
       let
-        tempoedAbc = TempoedAbc { abcTune: abcTune, bpm : 120, phraseSize : 0.6 }
-      io <- runUI (component tempoedAbc instruments) unit body
+        playableAbc = PlayableAbc { abcTune: abcTune, bpm : 120, phraseSize : 0.6 }
+      io <- runUI (component playableAbc instruments) unit body
       pure unit
     Left err -> do
       _  <- liftEffect $ log "ABC failed to load"
