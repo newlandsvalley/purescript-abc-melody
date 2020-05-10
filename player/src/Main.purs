@@ -29,7 +29,7 @@ main = HA.runHalogenAff do
   case etune of
     Right abcTune -> do
       let
-        playableAbc = PlayableAbc { abcTune: abcTune, bpm : 120, phraseSize : 0.6 }
+        playableAbc = PlayableAbc { abcTune: abcTune, bpm : 120, phraseSize : 0.6, generateIntro : true }
       io <- runUI (component playableAbc instruments) unit body
       pure unit
     Left err -> do

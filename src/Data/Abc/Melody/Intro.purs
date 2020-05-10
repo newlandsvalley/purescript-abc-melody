@@ -18,7 +18,7 @@ appendIntroSections repeatState =
   let
     -- appnd the intro and replace any lead-in section (if present)
     sections =
-      List.filter (\(Section s) -> s.label /= Intro) repeatState.sections <> makeIntroSections repeatState.intro
+      List.filter (\(Section s) -> s.label /= LeadIn) repeatState.sections <> makeIntroSections repeatState.intro
   in
     repeatState { sections = sections }
 
