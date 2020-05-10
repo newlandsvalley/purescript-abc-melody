@@ -7,14 +7,16 @@ module Data.Abc.Melody.RepeatBuilder
 -- | melody with all the repeats in place.  It also phrases the melody properly
 -- | into small, easily interruptible phrases.
 
-import Prelude (($), (<>), (>=), (<), (&&), map, not)
-import Data.List (List, null, filter, toUnfoldable)
-import Data.Array as Array
-import Data.Maybe (Maybe(..))
-import Data.Foldable (foldl)
 import Audio.SoundFont.Melody (Melody)
-import Data.Abc.Melody.Types (MidiBar, Section(..), Sections)
 import Data.Abc.Melody.Phrasing (rephraseSection)
+import Data.Abc.Melody.Types (MidiBar, IPhrase, Section(..), Sections, Label(..))
+import Data.Array as Array
+import Data.Foldable (foldl)
+import Data.List (List, null, filter, toUnfoldable)
+import Data.Maybe (Maybe(..), maybe)
+import Prelude (map, not, ($), (&&), (<), (<>), (>=), (-))
+
+import Debug.Trace (spy, trace, traceM)
 
 -- | build any repeated section into an extended melody with all repeats realised
 buildRepeatedMelody :: List MidiBar -> Sections -> Number -> Melody
@@ -29,9 +31,11 @@ buildRepeatedMelody mbs sections phraseSize =
 repeatedSection ::  List MidiBar -> Number -> Melody -> Section -> Melody
 repeatedSection mbs phraseSize acc (Section { start: Just a, firstEnding: Just b, secondEnding : Just c, end: Just d, isRepeated : _ }) =
   (variantSlice a b c d mbs phraseSize ) <> acc
-repeatedSection mbs phraseSize  acc (Section { start: Just a, firstEnding: _, secondEnding : _, end: Just d, isRepeated : false }) =
+repeatedSection mbs phraseSize  acc (Section { start: Just a, end: Just d, label: Intro }) =
+  (normalisedIntroSlice a d mbs phraseSize) <> acc
+repeatedSection mbs phraseSize  acc (Section { start: Just a, end: Just d, isRepeated : false }) =
   (trackSlice a d mbs phraseSize) <> acc
-repeatedSection mbs phraseSize acc (Section { start: Just a, firstEnding: _, secondEnding : _, end: Just d, isRepeated : true }) =
+repeatedSection mbs phraseSize acc (Section { start: Just a,  end: Just d, isRepeated : true }) =
   (trackSlice a d mbs phraseSize) <> (trackSlice a d mbs phraseSize) <> acc
 repeatedSection _ _ acc _ =
   acc
@@ -68,3 +72,29 @@ accumulateMessages phraseSize mbs  =
     phrases =  toUnfoldable $ map _.iPhrase mbs
   in
     rephraseSection phraseSize $ Array.reverse $ Array.concat phrases
+
+-- | build the notes from the repurposed track slice so as to form an
+-- | intro.  This requires normalising the notes
+normalisedIntroSlice :: Int -> Int -> List MidiBar -> Number -> Melody
+normalisedIntroSlice start finish mbs phraseSize =
+  accumulateAndNormaliseMessages phraseSize $ filter (barSelector start finish) mbs
+
+-- | accumulate the messages but normalise the notes relative to a new
+-- | first note offset of 0.
+accumulateAndNormaliseMessages :: Number -> List MidiBar -> Melody
+accumulateAndNormaliseMessages phraseSize mbs  =
+  let
+    phrases =  toUnfoldable $ map _.iPhrase mbs
+  in
+    rephraseSection phraseSize $ normalisePhrase $ Array.reverse $ Array.concat phrases
+
+-- | normalise a phrase by setting the first note offset to zero and reducing
+-- | the offset of each successive note by the same amount
+-- | this is used when we need to repurpose phrases for use in Intros
+normalisePhrase :: IPhrase -> IPhrase
+normalisePhrase phrase =
+  let
+    firstNoteOffset = maybe 0.0 _.timeOffset $ Array.head phrase
+    f n = n { timeOffset = n.timeOffset - firstNoteOffset }
+  in
+    map f phrase

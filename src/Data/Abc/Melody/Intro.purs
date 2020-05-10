@@ -9,15 +9,18 @@ module Data.Abc.Melody.Intro
 import Data.Abc.Melody.Types
 
 import Data.Array (filter, toUnfoldable)
+import Data.List (filter) as List
 import Data.Maybe (Maybe(..), fromMaybe)
-import Prelude (map, ($), (+), (-), (>=), (<>))
+import Prelude (map, ($), (+), (-), (>=), (/=), (<>))
 
 appendIntroSections :: RepeatState -> RepeatState
 appendIntroSections repeatState =
   let
+    -- appnd the intro and replace any lead-in section (if present)
     sections =
-      repeatState.sections <> makeIntroSections repeatState.intro
-  in repeatState { sections = sections }
+      List.filter (\(Section s) -> s.label /= Intro) repeatState.sections <> makeIntroSections repeatState.intro
+  in
+    repeatState { sections = sections }
 
 -- | identify the bars that form the intro.  In most cases this will be the final
 -- | 2 bars of the A section but modified if there are alternate endings or if there

@@ -83,8 +83,8 @@ melodySuite = do
   graceSuite
   atTempoSuite
   phrasingSuite
-
-  -- bugSuite
+  introSuite
+  --bugSuite
 
 
 transformationSuite :: Free TestF Unit
@@ -231,12 +231,34 @@ phrasingSuite =
       assertMelodyShortPhrase "| C4D8E4F4 |\r\n" [[noteC 0.0 1.0], [noteD 0.0 2.0], [noteE 0.0 1.0], [noteF 0.0 1.0]]
 
 
+introSuite :: Free TestF Unit
+introSuite =
+  suite "intros" do
+    test "simple repeat" do
+      assertIntro smalandPolska
+        [
+          [ noteFs 0.0 0.25, noteG 0.25 0.125, noteA 0.375 0.125, noteB 0.5 0.25
+          , noteCs' 0.75 0.25, noteD' 1.0 0.375, noteB 1.375 0.125]
+        , [ noteB 0.0 0.25, noteA 0.25 0.25, noteB 0.5 1.0 ]
+        ]
+    test "simple repeat replacing lead-in" do
+      assertIntro augustsson
+        [
+          [noteCs' 0.0 0.25, noteE' 0.25 0.25, noteD' 0.5 0.25, noteCs' 0.75 0.25,
+           noteB 1.0 0.25, noteD' 1.25 0.25, noteCs' 1.5 0.25, noteB 1.75 0.25 ]
+        , [noteA 0.0 1.0, noteA 1.0 0.375, noteA 1.375 0.125, noteA 1.5 0.375, noteB 1.875 0.125]
+        ]
 
 bugSuite :: Free TestF Unit
 bugSuite =
   suite "bugs" do
-    test "simple repeat intro" do
-      assertIntro augustsson []
+    test "simple repeat" do
+      assertIntro smalandPolska
+        [
+          [ noteFs 0.0 0.25, noteG 0.25 0.125, noteA 0.375 0.125, noteB 0.5 0.25
+          , noteCs' 0.75 0.25, noteD' 1.0 0.375, noteB 1.375 0.125]
+        , [ noteB 0.0 0.25, noteA 0.25 0.25, noteB 0.5 1.0 ]
+        ]
     {-}
 
     test "pair of repeats" do
@@ -274,7 +296,6 @@ bugSuite =
          [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
          [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25] ]
     -}
-
 
 
 
@@ -323,10 +344,64 @@ noteF offset length =
   , gain : gain
   }
 
+noteFs :: Number -> Number -> MidiNote
+noteFs offset length =
+  { channel : 0
+  , id  : 66
+  , timeOffset : offset
+  , duration : length
+  , gain : gain
+  }
+
 noteG :: Number -> Number -> MidiNote
 noteG offset length =
   { channel : 0
   , id  : 67
+  , timeOffset : offset
+  , duration : length
+  , gain : gain
+  }
+
+noteA :: Number -> Number -> MidiNote
+noteA offset length =
+  { channel : 0
+  , id  : 69
+  , timeOffset : offset
+  , duration : length
+  , gain : gain
+  }
+
+noteB :: Number -> Number -> MidiNote
+noteB offset length =
+  { channel : 0
+  , id  : 71
+  , timeOffset : offset
+  , duration : length
+  , gain : gain
+  }
+
+noteCs' :: Number -> Number -> MidiNote
+noteCs' offset length =
+  { channel : 0
+  , id  : 73
+  , timeOffset : offset
+  , duration : length
+  , gain : gain
+  }
+
+noteD' :: Number -> Number -> MidiNote
+noteD' offset length =
+  { channel : 0
+  , id  : 74
+  , timeOffset : offset
+  , duration : length
+  , gain : gain
+  }
+
+noteE' :: Number -> Number -> MidiNote
+noteE' offset length =
+  { channel : 0
+  , id  : 76
   , timeOffset : offset
   , duration : length
   , gain : gain
