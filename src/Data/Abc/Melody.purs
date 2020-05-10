@@ -122,7 +122,8 @@ buildMelody tstate generateIntro =
     tstate' = tstate { rawMelody = tstate.currentBar : tstate.rawMelody
                      , repeatState = repeatState }
     rawMelody = currentBar : tstate.rawMelody
-    -- foo = spy "repeat sections"  tstate'.repeatState.sections
+    -- foo1 = spy "final repeat sections"  finalRepeatState
+    -- foo2 = spy "repeat sections after intro"  tstate'.repeatState.sections
     -- bad = spy "raw melody" tstate'.rawMelody
     -- bar = spy "intro bars"  tstate'.repeatState.intro
   in

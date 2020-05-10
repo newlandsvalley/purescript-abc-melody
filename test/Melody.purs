@@ -78,13 +78,15 @@ assertIntro s expected =
 
 melodySuite :: Free TestF Unit
 melodySuite = do
+
   transformationSuite
   repeatSuite
   graceSuite
   atTempoSuite
   phrasingSuite
   introSuite
-  --bugSuite
+
+  -- bugSuite
 
 
 transformationSuite :: Free TestF Unit
@@ -248,16 +250,25 @@ introSuite =
            noteB 1.0 0.25, noteD' 1.25 0.25, noteCs' 1.5 0.25, noteB 1.75 0.25 ]
         , [noteA 0.0 1.0, noteA 1.0 0.375, noteA 1.375 0.125, noteA 1.5 0.375, noteB 1.875 0.125]
         ]
+    test "variant repeat (1 bar)" do
+      assertIntro bolOlles
+        [
+          [ noteCs' 0.0 0.375, noteD' 0.375 0.125, noteCs' 0.5 0.375
+          , noteA 0.875 0.125, noteCs' 1.0 0.5, noteCs' 1.5 0.5 ]
+        , [ noteB 0.0 0.375, noteCs' 0.375 0.125, noteD' 0.5 0.375
+          , noteCs' 0.875 0.125, noteB 1.0 0.75, noteFs 1.75 0.25 ]
+        ]
 
 bugSuite :: Free TestF Unit
 bugSuite =
   suite "bugs" do
-    test "simple repeat" do
-      assertIntro smalandPolska
+    test "variant repeat (1 bar)" do
+      assertIntro bolOlles
         [
-          [ noteFs 0.0 0.25, noteG 0.25 0.125, noteA 0.375 0.125, noteB 0.5 0.25
-          , noteCs' 0.75 0.25, noteD' 1.0 0.375, noteB 1.375 0.125]
-        , [ noteB 0.0 0.25, noteA 0.25 0.25, noteB 0.5 1.0 ]
+          [ noteCs' 0.0 0.375, noteD' 0.375 0.125, noteCs' 0.5 0.375
+          , noteA 0.875 0.125, noteCs' 1.0 0.5, noteCs' 1.5 0.5 ]
+        , [ noteB 0.0 0.375, noteCs' 0.375 0.125, noteD' 0.5 0.375
+          , noteCs' 0.875 0.125, noteB 1.0 0.75, noteFs 1.75 0.25 ]
         ]
     {-}
 
@@ -402,6 +413,15 @@ noteE' :: Number -> Number -> MidiNote
 noteE' offset length =
   { channel : 0
   , id  : 76
+  , timeOffset : offset
+  , duration : length
+  , gain : gain
+  }
+
+noteFs' :: Number -> Number -> MidiNote
+noteFs' offset length =
+  { channel : 0
+  , id  : 78
   , timeOffset : offset
   , duration : length
   , gain : gain

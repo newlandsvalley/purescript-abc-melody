@@ -35,6 +35,36 @@ identifyIntro (Section section) =
           case section.secondEnding of
             -- we have an alterbative ending
             Just se ->
+              -- se markes the first bar of the second ending, so that the first
+              -- ending comes immediately before it.  If it's a 2-bar ending, we use
+              -- these previous 2 bars.  If it's a 1-bar ending we use it and the final
+              -- bar of the tune proper.  In either case we just need the last 2 bars.
+              [se - 1, se - 2]
+            _ ->
+              -- there is no alternative ending - either unrepeated or a simple repeat
+              -- whic is treated identially by identifying the last 2 bars
+              let
+                end = fromMaybe 0 section.end
+              in
+                [end - 1, end -2]
+                --  [end - 2, end -1]
+        _ ->
+          []
+  in
+    -- removing bars numbered less that 1 sorts out degenerate cases of melodies
+    -- which have only 1 bar
+    filter (\x -> x >= 0) introBars
+
+{-
+identifyIntro :: Section -> Array Int
+identifyIntro (Section section) =
+  let
+    introBars =
+      case section.label of
+        APart ->
+          case section.secondEnding of
+            -- we have an alterbative ending
+            Just se ->
               let
                 end = fromMaybe se section.end
                 fe = fromMaybe se section.firstEnding
@@ -61,6 +91,7 @@ identifyIntro (Section section) =
     -- removing bars numbered less that 1 sorts out degenerate cases of melodies
     -- which have only 1 bar
     filter (\x -> x >= 0) introBars
+-}
 
 
 -- | convert the intro bars into an entirely artificial list of sections
