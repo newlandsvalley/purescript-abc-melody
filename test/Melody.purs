@@ -262,6 +262,17 @@ introSuite =
         , [ noteB 0.0 0.375, noteCs' 0.375 0.125, noteD' 0.5 0.375
           , noteCs' 0.875 0.125, noteB 1.0 0.75, noteFs 1.75 0.25 ]
         ]
+    -- this just tests that we can identify the end of the A Part of a variant ending
+    -- when the B part is not repeated
+    -- results should be identical to the previous test
+    test "confirm variant ending" do
+      assertIntro bolOllesUnrepeatedB
+        [
+          [ noteCs' 0.0 0.375, noteD' 0.375 0.125, noteCs' 0.5 0.375
+          , noteA 0.875 0.125, noteCs' 1.0 0.5, noteCs' 1.5 0.5 ]
+        , [ noteB 0.0 0.375, noteCs' 0.375 0.125, noteD' 0.5 0.375
+          , noteCs' 0.875 0.125, noteB 1.0 0.75, noteFs 1.75 0.25 ]
+        ]
 
 abcWorkaroundSuite :: Free TestF Unit
 abcWorkaroundSuite =
@@ -276,9 +287,15 @@ abcWorkaroundSuite =
 
 bugSuite :: Free TestF Unit
 bugSuite =
-  suite "illegal ABC workarounds" do
-    test "bad tie - different pitch" do
-      assertMelody "| CD-EF |\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25, noteF 0.75 0.25]]
+  suite "bugs" do
+    test "confirm variant ending" do
+      assertIntro bolOllesUnrepeatedB
+        [
+          [ noteCs' 0.0 0.375, noteD' 0.375 0.125, noteCs' 0.5 0.375
+          , noteA 0.875 0.125, noteCs' 1.0 0.5, noteCs' 1.5 0.5 ]
+        , [ noteB 0.0 0.375, noteCs' 0.375 0.125, noteD' 0.5 0.375
+          , noteCs' 0.875 0.125, noteB 1.0 0.75, noteFs 1.75 0.25 ]
+        ]
 
 
 noteC :: Number -> Number -> MidiNote
