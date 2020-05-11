@@ -78,7 +78,6 @@ assertIntro s expected =
 
 melodySuite :: Free TestF Unit
 melodySuite = do
-
   transformationSuite
   repeatSuite
   graceSuite
@@ -236,6 +235,12 @@ phrasingSuite =
 introSuite :: Free TestF Unit
 introSuite =
   suite "intros" do
+    test "unrepeated" do
+      assertIntro "AB | CD | EF ||: aaa | bbb | ccc :|\r\n"
+        [
+          [ noteC 0.0 0.25, noteD 0.25 0.25 ]
+        , [ noteE 0.0 0.25, noteF 0.25 0.25 ]
+        ]
     test "simple repeat" do
       assertIntro smalandPolska
         [
@@ -262,13 +267,11 @@ introSuite =
 bugSuite :: Free TestF Unit
 bugSuite =
   suite "bugs" do
-    test "variant repeat (1 bar)" do
-      assertIntro bolOlles
+    test "unrepeated" do
+      assertIntro "AB | CD | EF ||: aaa | bbb | ccc :|\r\n"
         [
-          [ noteCs' 0.0 0.375, noteD' 0.375 0.125, noteCs' 0.5 0.375
-          , noteA 0.875 0.125, noteCs' 1.0 0.5, noteCs' 1.5 0.5 ]
-        , [ noteB 0.0 0.375, noteCs' 0.375 0.125, noteD' 0.5 0.375
-          , noteCs' 0.875 0.125, noteB 1.0 0.75, noteFs 1.75 0.25 ]
+          [ noteC 0.0 0.25, noteD 0.25 0.25 ]
+        , [ noteE 0.0 0.25, noteF 0.25 0.25 ]
         ]
     {-}
 
