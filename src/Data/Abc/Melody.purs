@@ -8,17 +8,17 @@ module Data.Abc.Melody
 
 -- | Build a phrased, playable melody directly from a monophonic ABC Score
 
+import Data.Abc.Melody.Types
+
 import Audio.SoundFont.Melody (Melody)
 import Control.Monad.State (State, get, put, execState)
-import Data.Abc (AbcNote, AbcTune, Accidental(..), Bar, BarType, BodyPart(..), Broken(..), Grace, GraceableNote, Header(..), Mode(..),
-                 ModifiedKeySignature, Music(..), MusicLine, NoteDuration, Pitch(..), PitchClass(..), Repeat(..), RestOrNote, TempoSignature, TuneBody)
+import Data.Abc (AbcNote, AbcTune, Accidental(..), Bar, BarType, BodyPart(..), Broken(..), Grace, GraceableNote, Header(..), Mode(..), ModifiedKeySignature, Music(..), MusicLine, NoteDuration, Pitch(..), PitchClass(..), Repeat(..), RestOrNote, TempoSignature, TuneBody)
 import Data.Abc.Accidentals as Accidentals
 import Data.Abc.Canonical as Canonical
 import Data.Abc.KeySignature (modifiedKeySet, pitchNumber, notesInChromaticScale)
-import Data.Abc.Melody.Types
+import Data.Abc.Melody.Intro (appendIntroSections)
 import Data.Abc.Melody.RepeatBuilder (buildRepeatedMelody)
 import Data.Abc.Melody.RepeatSections (initialRepeatState, indexBar, finalBar)
-import Data.Abc.Melody.Intro (appendIntroSections)
 import Data.Abc.Metadata (dotFactor, getKeySig)
 import Data.Abc.Tempo (AbcTempo, getAbcTempo, setBpm, beatsPerSecond)
 import Data.Array as Array
@@ -31,20 +31,8 @@ import Data.List.NonEmpty (head, length, tail, toList) as Nel
 import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
 import Data.Rational (Rational, fromInt, toNumber, (%))
 import Data.Tuple (Tuple(..))
-import Prelude (bind, identity, map, pure, ($), (||), (*), (+), (-), (/), (<>), (==))
-
-{-  MidiPhrase treatment
-
-An uninterruptable sequence of MIDI soundfont notes.  In the current implementation, these phrases are started by
-the start of the tune, the start of a repeated section or the start of an alternate ending.  They are terminated by
-the end of the tune, the end of a repeated section or the start of an (i.e. the second) alternate ending.
-
-Note that this means the phrase length of a normal sequence of bars between these brackets is currently too long
-to provide a reasonably responsive interruption.
-
--}
-
 import Debug.Trace (spy, trace, traceM)
+import Prelude (bind, identity, map, pure, ($), (&&), (*), (+), (-), (/), (<>), (==), (||))
 
 -- | The pitch of a note expressed as a MIDI interval.
 type MidiPitch =
@@ -330,21 +318,39 @@ processNoteWithTie tempoModifier tstate graceableNote =
   in
     case tstate.lastNoteTied of
       Just lastNote ->
-        let
-          combinedGraceableNote = incrementNoteDuration lastNote abcNote.duration
-        in
-          if abcNote.tied then
-            -- combine the notes, ignoring any grace notes from the incooming note
-            -- and return the combined note as the new tied note
-            Tuple tstate.currentBar.iPhrase (Just combinedGraceableNote)
-          else
-            let
-              -- and emit the note but now including the extra offset of the graces
-              -- note = emitNotePlus tempoModifier tstate gracedNote gracedNoteExtraOffset
-              phrase = emitGracesAndNote tempoModifier tstate combinedGraceableNote
-            in
-              -- write out the note to be held in bar state
-              Tuple (phrase <> tstate.currentBar.iPhrase) Nothing
+        -- the ties is legitimate if the pitches are the same and the incoming note
+        -- has no grace notes
+        if (legitimateTie tstate lastNote graceableNote) then
+          let
+            combinedGraceableNote = incrementNoteDuration lastNote abcNote.duration
+          in
+            if abcNote.tied then
+              -- combine the notes,
+              Tuple tstate.currentBar.iPhrase (Just combinedGraceableNote)
+            else
+              let
+                -- and emit the note but now including the extra offset of the graces
+                -- note = emitNotePlus tempoModifier tstate gracedNote gracedNoteExtraOffset
+                phrase = emitGracesAndNote tempoModifier tstate combinedGraceableNote
+              in
+                -- write out the note to be held in bar state
+                Tuple (phrase <> tstate.currentBar.iPhrase) Nothing
+        else
+          -- this is a workaround for an illegal tie in the ABC
+          let
+            -- emit the tied note that is in error
+            phraseFaultyTie = emitGracesAndNote tempoModifier tstate lastNote
+            -- prepare the phrase for this note if we need it, taking account
+            -- of the increased time offset from the faulty grace we've just emitted
+            tstate' = incrementTimeOffset tstate  graceableNote.abcNote.duration
+            phrase = emitGracesAndNote tempoModifier tstate' graceableNote
+          in
+            if graceableNote.abcNote.tied then
+              -- just emit the faulty tied note and set lastNoteTied
+              Tuple (phraseFaultyTie <> tstate.currentBar.iPhrase) (Just graceableNote)
+            else
+              -- emit both notes as individuals
+              Tuple (phrase <> phraseFaultyTie <> tstate.currentBar.iPhrase) Nothing
       _ ->
         if graceableNote.abcNote.tied then
           -- just set lastNoteTied
@@ -612,6 +618,15 @@ noteDuration abcTempo noteLength =
     beatLength = abcTempo.unitNoteLength / (1 % 4)
   in
     toNumber $ beatLength * noteLength / bps
+
+-- r| return true if two tied note can be tied legitimately to the following note
+-- | the notes must have the same pitch and the following note my not be graced
+legitimateTie :: TState -> GraceableNote -> GraceableNote -> Boolean
+legitimateTie tstate tiedNote nextNote =
+  (midiPitchOffset tiedNote.abcNote tstate.modifiedKeySignature tstate.currentBarAccidentals ==
+    midiPitchOffset nextNote.abcNote tstate.modifiedKeySignature tstate.currentBarAccidentals)
+    &&
+    isNothing nextNote.maybeGrace
 
 -- | Convert an ABC note pitch to a MIDI pitch.
 -- |

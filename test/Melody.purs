@@ -84,6 +84,7 @@ melodySuite = do
   atTempoSuite
   phrasingSuite
   introSuite
+  abcWorkaroundSuite
 
   -- bugSuite
 
@@ -193,8 +194,6 @@ graceSuite =
       assertMelody "| {D}CDE |\r\n" [ [noteD 0.0 0.025, noteC 0.025 0.225, noteD 0.25 0.25, noteE 0.5 0.25] ]
     test "double grace" do
       assertMelody "| {ED}CDE |\r\n" [ [noteE 0.0 0.025, noteD 0.025 0.025, noteC 0.05 0.2, noteD 0.25 0.25, noteE 0.5 0.25] ]
-    test "graces immediately after ties are ignored" do
-      assertMelody "| C-{D}CDE |\r\n" [ [noteC 0.0 0.5, noteD 0.5 0.25, noteE 0.75 0.25]]
     -- | grace before ties.  Behaviour is differebt from Abc.Midi.  There, grace notes eat into the first note of the tie
     -- | but here they eat into the combined tied note.  i.e. the behaviour of the example is identical to | {D}C2DE |
     test "graces before ties are accumulated" do
@@ -264,53 +263,22 @@ introSuite =
           , noteCs' 0.875 0.125, noteB 1.0 0.75, noteFs 1.75 0.25 ]
         ]
 
+abcWorkaroundSuite :: Free TestF Unit
+abcWorkaroundSuite =
+  suite "illegal ABC workarounds" do
+    test "bad tie - different pitch" do
+      assertMelody "| CD-EF |\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25, noteF 0.75 0.25]]
+    test "ignore tie - interrupting grace" do
+      -- if the note following the tie has grace notes, the tie is ignored
+      assertMelody "| CD-{E}DE |\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.025, noteD 0.525 0.225, noteE 0.75 0.25]]
+
+
+
 bugSuite :: Free TestF Unit
 bugSuite =
-  suite "bugs" do
-    test "unrepeated" do
-      assertIntro "AB | CD | EF ||: aaa | bbb | ccc :|\r\n"
-        [
-          [ noteC 0.0 0.25, noteD 0.25 0.25 ]
-        , [ noteE 0.0 0.25, noteF 0.25 0.25 ]
-        ]
-    {-}
-
-    test "pair of repeats" do
-      assertMelody "|: ABc | def |1 fed :|2 eee |\r\n" []
-
-
-    test "simple repeat" do
-      assertMelody "|: CD | E :|: DEF :|\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
-         [noteD 0.0 0.25, noteE 0.25 0.25, noteF 0.5 0.25], [noteD 0.0 0.25, noteE 0.25 0.25, noteF 0.5 0.25]
-        ]
-
-    test "alternate endings" do
-      assertMelody "|: CD |1 E :|2 F |\r\n"  [ [noteC 0.0 0.25, noteD 0.25 0.25],
-          [noteE 0.0 0.25],
-          [noteC 0.0 0.25, noteD 0.25 0.25],
-          [noteF 0.0 0.25] ]
-
-
-    test "lead-in then repeat" do
-      assertMelody "FC |: CD | E :|\r\n"  [[noteF 0.0 0.25, noteC 0.25 0.25],[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
-
-    test "simple repeat" do
-      -- for some reason, terminated by an empty phrase
-      assertMelody "|: CD | E :|\r\n" [[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]]
-    test "simple repeat implicit start" do
-      assertMelody "| C | DE :|\r\n" [[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]]
-    test "notes" do
-      assertMelody "| CD | E |\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]]
-
-    test "alternate endings then repeat" do
-      assertMelody "|: CD |1 E :|2 F |: CDE :|\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25],
-         [noteE 0.0 0.25],
-         [noteC 0.0 0.25, noteD 0.25 0.25],
-         [noteF 0.0 0.25],
-         [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
-         [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25] ]
-    -}
-
+  suite "illegal ABC workarounds" do
+    test "bad tie - different pitch" do
+      assertMelody "| CD-EF |\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25, noteF 0.75 0.25]]
 
 
 noteC :: Number -> Number -> MidiNote
