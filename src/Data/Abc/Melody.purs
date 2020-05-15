@@ -190,14 +190,13 @@ transformMusic m =
           , tied : false
           }
         first = Nel.head abcChord.notes
-        others = Nel.tail abcChord.notes
         -- we'll pace the chord from the duration of the first note it contains,
         -- modified by the overall chord duration
         duration = abcChord.duration * first.duration
       in
         do
           -- set the notes all to start at the same time with the correct duration
-          _ <- updateState (addChordalNotesToState abcChord.duration) (Nel.toList abcChord.notes)
+          _ <- updateState (addChordalNotesToState abcChord.duration) abcChord.notes
           -- pace by incrementing the offset for the next note
           updateState incrementTimeOffset duration
 
@@ -394,11 +393,11 @@ emitGracesAndNote tempoModifier tstate graceableNote =
   in
     Array.cons mainNote graceNotesPhrase
 
-addChordalNoteToState :: Rational -> TState-> AbcNote -> TState
-addChordalNoteToState tempoModifier tstate abcNote =
+addChordalNoteToState :: Rational -> Boolean -> TState-> AbcNote -> TState
+addChordalNoteToState tempoModifier canPhrase tstate abcNote =
   let
     notes =
-      processChordalNote tempoModifier tstate abcNote
+      processChordalNote tempoModifier tstate abcNote canPhrase
     barAccidentals =
       addNoteToBarAccidentals abcNote tstate.currentBarAccidentals
   in
@@ -407,18 +406,23 @@ addChordalNoteToState tempoModifier tstate abcNote =
            }
 
 -- | Add notes from a chord to state
-addChordalNotesToState :: Rational -> TState-> List AbcNote -> TState
+addChordalNotesToState :: Rational -> TState-> NonEmptyList AbcNote -> TState
 addChordalNotesToState tempoModifier tstate abcNotes =
-  foldl (addChordalNoteToState tempoModifier) tstate abcNotes
+  let
+    -- process the first note in the chord separately because qe can break phrase here
+    tstate' = addChordalNoteToState tempoModifier true tstate (Nel.head abcNotes)
+  in
+    -- then process the rest - we can't brak phrase in these
+    foldl (addChordalNoteToState tempoModifier false) tstate' (Nel.tail abcNotes)
 
 -- | process the incoming  note that is part of a chord.
 -- | Here, ties and grace notes preceding the note
 -- | are not supported
-processChordalNote ::  Rational -> TState -> AbcNote -> IPhrase
-processChordalNote tempoModifier tstate abcNote =
+processChordalNote ::  Rational -> TState -> AbcNote -> Boolean -> IPhrase
+processChordalNote tempoModifier tstate abcNote canPhrase =
   let
     -- we#re not allowed a phrase boundary at a chordal note
-    newNote = emitNote tempoModifier tstate abcNote false
+    newNote = emitNote tempoModifier tstate abcNote canPhrase
   in
     case tstate.lastNoteTied of
       Just lastNote ->

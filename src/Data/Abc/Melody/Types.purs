@@ -38,7 +38,7 @@ type MidiBar =
 type MidiBars = List MidiBar
 
 data Label =
-    LeadIn     -- lead-in bars existimng in the tune
+    LeadIn     -- lead-in bars existing in the tune
   | Intro      --- artificially generated Intro
   | APart
   | OtherPart

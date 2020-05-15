@@ -59,3 +59,14 @@ bolOllesUnrepeatedB =
   <> "B>cd>e {e}f2f2|f2e>d B2-B>B |c>dc>A c2c2 |1 B>cd>c B3F:|2 B>cd>c B3B || A2f>e d2A>F|\r\n"
   <> "|{F}G2G2 G>Be>d|c2c2 c>Af>e|d2d2 A3 A-|\r\n"
   <> "A2f>e d2A>F|{F}G2G2 G>Be>d|c2c2 c>Af>e | d2d2 d3 ||\r\n"
+
+hesitantChord :: String
+hesitantChord =
+  "X:1\r\n"
+  <> "T: Hesitant Chord in start of B part\r\n"
+  <> "R: Slängpolska\r\n"
+  <> "L: 1/8\r\n"
+  <> "M: 3/4\r\n"
+  <> "K: D\r\n"
+  <> "|: c6 |1 d4-dB :|2 d4-dF |\r\n"
+  <> "|: [GD]2 A4 | A6  :|\r\n"

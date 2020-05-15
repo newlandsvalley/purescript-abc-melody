@@ -185,6 +185,20 @@ repeatSuite =
                                                       [noteF 0.0 0.25],
                                                       [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
                                                       [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25] ]
+    test "B part starts with chord" do
+      assertMelodyShortPhrase hesitantChord
+       [
+         [ noteCs' 0.0 1.5 ],
+         [ noteD' 0.0 1.25 ],
+         [ noteB 0.0 0.25 ],
+         [ noteCs' 0.0 1.5 ],
+         [ noteD' 0.0 1.25 ],
+         [ noteFs 0.0 0.25 ],
+         [ noteG 0.0 0.5, noteD 0.0 0.5, noteA 0.5 1.0 ],
+         [ noteA 0.0 1.5 ],
+         [ noteG 0.0 0.5, noteD 0.0 0.5, noteA 0.5 1.0 ],
+         [ noteA 0.0 1.5 ]
+       ]
 
 
 graceSuite :: Free TestF Unit
@@ -221,9 +235,12 @@ phrasingSuite =
     test "split long phrase" do
       -- we shpuld form a new phrase after the first 3 notes
       assertMelodyShortPhrase "| CDE DEF |\r\n" [[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteD 0.0 0.25, noteE 0.25 0.25, noteF 0.5 0.25]]
-    test "phrase boundary for chords" do
-      -- but we shouldn't break at any note in a chord
-      assertMelodyShortPhrase "| CDE [DE] F |\r\n" [[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25, noteD 0.75 0.25, noteE 0.75 0.25], [noteF 0.0 0.25]]
+    test "phrase boundary for chords - first note" do
+      -- we can break at the first note in a chord
+      assertMelodyShortPhrase "| CDE [DE] F |\r\n" [[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], [noteD 0.0 0.25, noteE 0.0 0.25, noteF 0.25 0.25]]
+    test "phrase boundary for chords - subsequent notes" do
+      -- we can't break at subsequent notes in a chord
+      assertMelodyShortPhrase "| CD [DE] F |\r\n" [[noteC 0.0 0.25, noteD 0.25 0.25, noteD 0.5 0.25, noteE 0.5 0.25], [noteF 0.0 0.25]]
     test "phrase boundary for grace notes" do
       -- nor should we break at any grace note or at the graced note itself
       assertMelodyShortPhrase "| CDE {D}E F |\r\n" [[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25, noteD 0.75 0.025, noteE 0.775 0.225], [noteF 0.0 0.25]]
@@ -284,19 +301,23 @@ abcWorkaroundSuite =
       assertMelody "| CD-{E}DE |\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.025, noteD 0.525 0.225, noteE 0.75 0.25]]
 
 
-
 bugSuite :: Free TestF Unit
 bugSuite =
   suite "bugs" do
-    test "confirm variant ending" do
-      assertIntro bolOllesUnrepeatedB
-        [
-          [ noteCs' 0.0 0.375, noteD' 0.375 0.125, noteCs' 0.5 0.375
-          , noteA 0.875 0.125, noteCs' 1.0 0.5, noteCs' 1.5 0.5 ]
-        , [ noteB 0.0 0.375, noteCs' 0.375 0.125, noteD' 0.5 0.375
-          , noteCs' 0.875 0.125, noteB 1.0 0.75, noteFs 1.75 0.25 ]
+    test "hesitant chord" do
+      assertMelodyShortPhrase hesitantChord
+       [
+         [ noteCs' 0.0 1.5 ],
+         [ noteD' 0.0 1.25 ],
+         [ noteB 0.0 0.25 ],
+         [ noteCs' 0.0 1.5 ],
+         [ noteD' 0.0 1.25 ],
+         [ noteFs 0.0 0.25 ],
+         [ noteG 0.0 0.5, noteD 0.0 0.5, noteA 0.5 1.0 ],
+         [ noteA 0.0 1.5 ],
+         [ noteG 0.0 0.5, noteD 0.0 0.5, noteA 0.5 1.0 ],
+         [ noteA 0.0 1.5 ]
         ]
-
 
 noteC :: Number -> Number -> MidiNote
 noteC offset length =
