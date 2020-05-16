@@ -5,12 +5,13 @@ module Data.Abc.Melody.Phrasing
 -- | so as to allow a player the chance to interrupt the playback.
 -- | This can be invoked at the end of each sub-phrase
 
-import Prelude ((-), (>), (&&))
-import Data.Array (cons, null, reverse)
+import Prelude ((-), (>), (&&), (||), ($))
+import Data.Array (cons, length, null, reverse)
 import Data.Foldable (foldl)
 import Audio.SoundFont (MidiNote)
 import Audio.SoundFont.Melody (MidiPhrase, Melody)
 import Data.Abc.Melody.Types
+import Debug.Trace (spy, trace, traceM)
 
 type Accumulator =
   { cutoff :: Number               -- the phrase length at which we cut off and start a new sub-phrase
@@ -30,26 +31,24 @@ processNote acc inote =
   let
     newOffset = inote.timeOffset - acc.originalOffset
   in
-    -- we start a new phrase if we're past the phrase boundary and also if we're
+    -- we simply set things off if this is the first note in the current phrase
+    if (null acc.current) then
+      acc { originalOffset = inote.timeOffset
+          , current = [ buildNote inote 0.0 ]
+          }
+    -- and we start a new phrase if we're past the phrase boundary and also if we're
     -- allowed to break phrase at this new note
-    if ((newOffset > acc.cutoff) && inote.canPhrase)
+    else if ((newOffset > acc.cutoff) && inote.canPhrase)
       then
-        -- start a new sub-phrase
-        let
-          subPhrases = consolidateCurrent acc
-          -- current = [ inote { timeOffset = 0.0 } ]
-          current = [ buildNote inote 0.0 ]
-        in
-          acc { originalOffset = inote.timeOffset
-              , current = current
-              , subPhrases = subPhrases }
+        acc { originalOffset = inote.timeOffset
+            , current = [ buildNote inote 0.0 ]
+            , subPhrases = consolidateCurrent acc }
       else
         -- just accumulate the note (in reverse order for efficiency)
         let
           newNote = buildNote inote newOffset
-          current = cons newNote acc.current
         in
-          acc { current = current }
+          acc { current = cons newNote acc.current }
 
 buildNote :: INote -> Number -> MidiNote
 buildNote inote offset =
@@ -84,6 +83,7 @@ rephrase acc0 phrase =
 rephraseSection :: Number -> IPhrase -> Melody
 rephraseSection phraseSize sectionPhrase =
   let
+    -- foo = spy "rephrase section of length" $ length sectionPhrase
     acc = rephrase (initialAcc phraseSize) sectionPhrase
     melody = consolidateCurrent acc
   in

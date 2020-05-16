@@ -78,6 +78,7 @@ assertIntro s expected =
 
 melodySuite :: Free TestF Unit
 melodySuite = do
+
   transformationSuite
   repeatSuite
   graceSuite
@@ -185,7 +186,7 @@ repeatSuite =
                                                       [noteF 0.0 0.25],
                                                       [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
                                                       [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25] ]
-    test "B part starts with chord" do
+    test "B part starts with chord - short phrases" do
       assertMelodyShortPhrase hesitantChord
        [
          [ noteCs' 0.0 1.5 ],
@@ -199,6 +200,16 @@ repeatSuite =
          [ noteG 0.0 0.5, noteD 0.0 0.5, noteA 0.5 1.0 ],
          [ noteA 0.0 1.5 ]
        ]
+    test "B part starts with chord - long phrases" do
+      assertMelody hesitantChord
+        [
+          [ noteCs' 0.0 1.5 ],
+          [ noteD' 0.0 1.25, noteB 1.25 0.25 ],
+          [ noteCs' 0.0 1.5 ],
+          [ noteD' 0.0 1.25 , noteFs 1.25 0.25 ],
+          [ noteG 0.0 0.5, noteD 0.0 0.5, noteA 0.5 1.0, noteA 1.5 1.5 ],
+          [ noteG 0.0 0.5, noteD 0.0 0.5, noteA 0.5 1.0 , noteA 1.5 1.5 ]
+        ]
 
 
 graceSuite :: Free TestF Unit
@@ -304,20 +315,8 @@ abcWorkaroundSuite =
 bugSuite :: Free TestF Unit
 bugSuite =
   suite "bugs" do
-    test "hesitant chord" do
-      assertMelodyShortPhrase hesitantChord
-       [
-         [ noteCs' 0.0 1.5 ],
-         [ noteD' 0.0 1.25 ],
-         [ noteB 0.0 0.25 ],
-         [ noteCs' 0.0 1.5 ],
-         [ noteD' 0.0 1.25 ],
-         [ noteFs 0.0 0.25 ],
-         [ noteG 0.0 0.5, noteD 0.0 0.5, noteA 0.5 1.0 ],
-         [ noteA 0.0 1.5 ],
-         [ noteG 0.0 0.5, noteD 0.0 0.5, noteA 0.5 1.0 ],
-         [ noteA 0.0 1.5 ]
-        ]
+    test "tuplet with rest" do
+      assertMelody "| (3z3D3E3 |\r\n" [ [noteD 0.5 0.5, noteE 1.0 0.5]]
 
 noteC :: Number -> Number -> MidiNote
 noteC offset length =

@@ -24,6 +24,7 @@ buildRepeatedMelody mbs sections phraseSize =
   if (null sections) then
     [[]]
   else
+    -- the sections are in reverse order and so we build backwards here!
     Array.filter (not Array.null) $ foldl (repeatedSection mbs phraseSize) [] sections
 
 -- | build a repeat section
