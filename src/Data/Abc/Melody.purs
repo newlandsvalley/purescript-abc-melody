@@ -177,7 +177,6 @@ transformMusic m =
 
     Rest r ->
       updateState (addRestToState (1 % 1)) r
-      -- updateState incrementTimeOffset r.duration
 
     Tuplet maybeGrace signature restsOrNotes ->
       updateState (addTupletContentsToState maybeGrace (signature.q % signature.p)) restsOrNotes
@@ -305,6 +304,11 @@ addGraceableNoteToState tempoModifier tstate graceableNote =
     else
       incrementTimeOffset tstate' ((abcNote.duration + lastTiedNoteDuration) * tempoModifier)
 
+-- | Add a rest note to state.  Rests are now indicated by a note of zero pitch
+-- | this allows the phrasing module to schedule when the notes are played
+-- | properly in each sub phrase
+-- | It is made possible by the latest master of purescript-soundfonts which
+-- | now considers such a note to indicate a rest
 addRestToState :: Rational -> TState-> AbcRest -> TState
 addRestToState tempoModifier tstate rest =
   let
@@ -315,15 +319,11 @@ addRestToState tempoModifier tstate rest =
   in
     incrementTimeOffset tstate' (rest.duration * tempoModifier)
 
-
-
 -- | tuplets can now contain rests
 addRestOrNoteToState :: Rational -> TState-> RestOrNote -> TState
 addRestOrNoteToState tempoModifier tstate restOrNote =
   case restOrNote of
     Left r ->
-      --  modifiy the rest duration by the tempo modifier
-      -- incrementTimeOffset tstate (r.duration * tempoModifier)
       addRestToState tempoModifier tstate r
     Right n ->
       addGraceableNoteToState tempoModifier tstate n

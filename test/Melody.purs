@@ -312,11 +312,16 @@ abcWorkaroundSuite =
       assertMelody "| CD-{E}DE |\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.025, noteD 0.525 0.225, noteE 0.75 0.25]]
 
 
+
 bugSuite :: Free TestF Unit
 bugSuite =
   suite "bugs" do
-    test "tuplet with rest" do
-      assertMelody "| (3z3D3E3 |\r\n" [ [noteD 0.5 0.5, noteE 1.0 0.5]]
+    test "crotchet rests" do
+      assertMelodyShortPhrase crotchetRests
+       [ [ noteA 0.0 0.5, rest 0.5 0.5 ],
+         [ noteCs' 0.0 0.5, noteD' 0.5 0.5 ]
+       ]
+
 
 noteC :: Number -> Number -> MidiNote
 noteC offset length =

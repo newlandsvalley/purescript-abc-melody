@@ -11,7 +11,7 @@
     "purescript-console": "^4.4.0",
     "purescript-effect": "^2.0.1",
     "purescript-abc-parser": "https://github.com/newlandsvalley/purescript-abc-parser.git#master",
-    "purescript-soundfonts": "^3.0.2"
+    "purescript-soundfonts": "https://github.com/newlandsvalley/purescript-soundfonts.git#master"
   },
   "devDependencies": {
     "purescript-psci-support": "^4.0.0",

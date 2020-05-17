@@ -70,3 +70,12 @@ hesitantChord =
   <> "K: D\r\n"
   <> "|: c6 |1 d4-dB :|2 d4-dF |\r\n"
   <> "|: [GD]2 A4 | A6  :|\r\n"
+
+crotchetRests :: String
+crotchetRests =
+  "X: 1\r\n"
+  <> "T: Crotchet rests\r\n"
+  <> "M: 4/4\r\n"
+  <> "L: 1/8\r\n"
+  <> "K: D\r\n"
+  <> "| A2 z2 c2 d2|\r\n"
