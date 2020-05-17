@@ -106,9 +106,9 @@ transformationSuite =
     test "long notes" do
       assertMelody "| C2D2E2 |\r\n"  [ [noteC 0.0 0.5, noteD 0.5 0.5, noteE 1.0 0.5]]
     test "rest" do
-      assertMelody"| CDZE |\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.75 0.25]]
+      assertMelody"| CDZE |\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, rest 0.5 0.25, noteE 0.75 0.25]]
     test "long rest" do
-      assertMelody "| CDZ2E |\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 1.0 0.25]]
+      assertMelody "| CDZ2E |\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, rest 0.5 0.5, noteE 1.0 0.25]]
     test "bars" do
       assertMelody "| C | D | E | F |\r\n"  [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25, noteF 0.75 0.25]]
     test "lines" do
@@ -116,7 +116,7 @@ transformationSuite =
     test "tuplet" do
       assertMelody "| (3C3D3E3 |\r\n"  [ [noteC 0.0 0.5, noteD 0.5 0.5, noteE 1.0 0.5]]
     test "tuplet with rest" do
-      assertMelody "| (3z3D3E3 |\r\n" [ [noteD 0.5 0.5, noteE 1.0 0.5]]
+      assertMelody "| (3z3D3E3 |\r\n" [ [rest 0.0 0.5, noteD 0.5 0.5, noteE 1.0 0.5]]
     test "broken rhythm >" do
       assertMelody "| C>D |\r\n" [ [noteC 0.0 0.375, noteD 0.375 0.125] ]
     test "broken rhythm <" do
@@ -430,6 +430,15 @@ noteFs' :: Number -> Number -> MidiNote
 noteFs' offset length =
   { channel : 0
   , id  : 78
+  , timeOffset : offset
+  , duration : length
+  , gain : gain
+  }
+
+rest :: Number -> Number -> MidiNote
+rest offset length =
+  { channel : 0
+  , id  : 0
   , timeOffset : offset
   , duration : length
   , gain : gain

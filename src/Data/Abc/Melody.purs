@@ -12,7 +12,8 @@ import Data.Abc.Melody.Types
 
 import Audio.SoundFont.Melody (Melody)
 import Control.Monad.State (State, get, put, execState)
-import Data.Abc (AbcNote, AbcTune, Accidental(..), Bar, BarType, BodyPart(..), Broken(..), Grace, GraceableNote, Header(..), Mode(..), ModifiedKeySignature, Music(..), MusicLine, NoteDuration, Pitch(..), PitchClass(..), Repeat(..), RestOrNote, TempoSignature, TuneBody)
+import Data.Abc (AbcNote, AbcRest, AbcTune, Accidental(..), Bar, BarType, BodyPart(..), Broken(..), Grace, GraceableNote, Header(..), Mode(..),
+               ModifiedKeySignature, Music(..), MusicLine, NoteDuration, Pitch(..), PitchClass(..), Repeat(..), RestOrNote, TempoSignature, TuneBody)
 import Data.Abc.Accidentals as Accidentals
 import Data.Abc.Canonical as Canonical
 import Data.Abc.KeySignature (modifiedKeySet, pitchNumber, notesInChromaticScale)
@@ -175,7 +176,8 @@ transformMusic m =
       updateState (addGraceableNoteToState (1 % 1)) graceableNote
 
     Rest r ->
-      updateState incrementTimeOffset r.duration
+      updateState (addRestToState (1 % 1)) r
+      -- updateState incrementTimeOffset r.duration
 
     Tuplet maybeGrace signature restsOrNotes ->
       updateState (addTupletContentsToState maybeGrace (signature.q % signature.p)) restsOrNotes
@@ -302,6 +304,29 @@ addGraceableNoteToState tempoModifier tstate graceableNote =
       tstate'
     else
       incrementTimeOffset tstate' ((abcNote.duration + lastTiedNoteDuration) * tempoModifier)
+
+addRestToState :: Rational -> TState-> AbcRest -> TState
+addRestToState tempoModifier tstate rest =
+  let
+    note = emitRest tempoModifier tstate rest
+    notes = Array.cons note tstate.currentBar.iPhrase
+    currentBar = tstate.currentBar { iPhrase = notes }
+    tstate' = tstate {currentBar = currentBar}
+  in
+    incrementTimeOffset tstate' (rest.duration * tempoModifier)
+
+
+
+-- | tuplets can now contain rests
+addRestOrNoteToState :: Rational -> TState-> RestOrNote -> TState
+addRestOrNoteToState tempoModifier tstate restOrNote =
+  case restOrNote of
+    Left r ->
+      --  modifiy the rest duration by the tempo modifier
+      -- incrementTimeOffset tstate (r.duration * tempoModifier)
+      addRestToState tempoModifier tstate r
+    Right n ->
+      addGraceableNoteToState tempoModifier tstate n
 
 -- | process the incoming note, accounting for the fact that the previous note may have been tied.
 -- |
@@ -436,15 +461,8 @@ processChordalNote tempoModifier tstate abcNote canPhrase =
       _ ->
         Array.cons newNote tstate.currentBar.iPhrase
 
--- | tuplets can now contain rests
-addRestOrNoteToState :: Rational -> TState-> RestOrNote -> TState
-addRestOrNoteToState tempoModifier tstate restOrNote =
-  case restOrNote of
-    Left r ->
-      --  modifiy the rest duration by the tempo modifier
-      incrementTimeOffset tstate (r.duration * tempoModifier)
-    Right n ->
-      addGraceableNoteToState tempoModifier tstate n
+
+
 
 -- | emit a MidiNote at the given offset held in TState
 emitNote :: Rational -> TState -> AbcNote -> Boolean -> INote
@@ -461,6 +479,16 @@ emitNotePlus tempoModifier tstate abcNote extraOffset canPhrase =
       noteDuration tstate.abcTempo (abcNote.duration * tempoModifier)
   in
     iNote (tstate.currentOffset + extraOffset) duration pitch canPhrase
+
+
+-- | emit a rest which is a note without a pitch (id 0)
+emitRest :: Rational -> TState -> AbcRest -> INote
+emitRest tempoModifier tstate rest =
+  let
+    duration =
+      noteDuration tstate.abcTempo (rest.duration * tempoModifier)
+  in
+    iNote tstate.currentOffset duration 0 true
 
 -- | emit the grace notes that may preface a 'graced' note
 -- | This is a bit hacky.  We don't update state after each emission bur instead

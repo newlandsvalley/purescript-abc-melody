@@ -10,7 +10,7 @@
     "purescript-prelude": "^4.1.1",
     "purescript-console": "^4.4.0",
     "purescript-halogen-components": "https://github.com/newlandsvalley/purescript-halogen-components.git#halogen5",
-    "purescript-abc-melody": "https://github.com/newlandsvalley/purescript-abc-melody.git#master"
+    "purescript-abc-melody": "https://github.com/newlandsvalley/purescript-abc-melody.git#rests"
   },
   "devDependencies": {
     "purescript-psci-support": "^4.0.0",
