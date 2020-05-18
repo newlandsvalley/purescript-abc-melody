@@ -78,7 +78,6 @@ assertIntro s expected =
 
 melodySuite :: Free TestF Unit
 melodySuite = do
-
   transformationSuite
   repeatSuite
   graceSuite
@@ -109,6 +108,17 @@ transformationSuite =
       assertMelody"| CDZE |\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, rest 0.5 0.25, noteE 0.75 0.25]]
     test "long rest" do
       assertMelody "| CDZ2E |\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, rest 0.5 0.5, noteE 1.0 0.25]]
+    test "crotchet rests" do
+      assertMelodyShortPhrase crotchetRests
+       [ [ noteA 0.0 0.5, rest 0.5 0.5 ],
+         [ noteCs' 0.0 0.5, noteD' 0.5 0.5 ]
+       ]
+    test "quaver rests" do
+      assertMelodyShortPhrase quaverRests
+        [ [ noteCs' 0.0 0.25, rest 0.25 0.25, noteD' 0.5 0.25 ],
+          [ rest 0.0 0.25, noteCs' 0.25 0.25, rest 0.5 0.25 ],
+          [ noteD' 0.0 0.25, rest 0.25 0.25, noteCs' 0.5 2.0 ]
+        ]
     test "bars" do
       assertMelody "| C | D | E | F |\r\n"  [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25, noteF 0.75 0.25]]
     test "lines" do
@@ -321,6 +331,9 @@ bugSuite =
        [ [ noteA 0.0 0.5, rest 0.5 0.5 ],
          [ noteCs' 0.0 0.5, noteD' 0.5 0.5 ]
        ]
+    test "quaver rests" do
+      assertMelodyShortPhrase quaverRests
+        []
 
 
 noteC :: Number -> Number -> MidiNote

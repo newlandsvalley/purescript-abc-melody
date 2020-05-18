@@ -79,3 +79,12 @@ crotchetRests =
   <> "L: 1/8\r\n"
   <> "K: D\r\n"
   <> "| A2 z2 c2 d2|\r\n"
+
+quaverRests :: String
+quaverRests =
+  "X: 1\r\n"
+  <> "T: Quaver rests\r\n"
+  <> "M: 4/4\r\n"
+  <> "L: 1/8\r\n"
+  <> "K: D\r\n"
+  <> "| cz dz cz dz | c8 |\r\n"
