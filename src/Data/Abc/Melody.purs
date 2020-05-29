@@ -32,8 +32,8 @@ import Data.List.NonEmpty (head, length, tail, toList) as Nel
 import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
 import Data.Rational (Rational, fromInt, toNumber, (%))
 import Data.Tuple (Tuple(..))
-import Debug.Trace (spy, trace, traceM)
 import Prelude (bind, identity, map, pure, ($), (&&), (*), (+), (-), (/), (<>), (==), (||))
+
 
 -- | The pitch of a note expressed as a MIDI interval.
 type MidiPitch =
@@ -183,13 +183,6 @@ transformMusic m =
 
     Chord abcChord ->
       let
-        arbitraryNote =
-          { pitchClass : C
-          , accidental : Implicit
-          , octave : 0
-          , duration : (fromInt 0)
-          , tied : false
-          }
         first = Nel.head abcChord.notes
         -- we'll pace the chord from the duration of the first note it contains,
         -- modified by the overall chord duration

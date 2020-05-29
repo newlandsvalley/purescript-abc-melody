@@ -5,13 +5,12 @@ module Data.Abc.Melody.Phrasing
 -- | so as to allow a player the chance to interrupt the playback.
 -- | This can be invoked at the end of each sub-phrase
 
-import Prelude ((-), (>), (&&), (||), ($))
-import Data.Array (cons, length, null, reverse)
+import Prelude ((-), (>), (&&))
+import Data.Array (cons, null, reverse)
 import Data.Foldable (foldl)
 import Audio.SoundFont (MidiNote)
 import Audio.SoundFont.Melody (MidiPhrase, Melody)
 import Data.Abc.Melody.Types
-import Debug.Trace (spy, trace, traceM)
 
 type Accumulator =
   { cutoff :: Number               -- the phrase length at which we cut off and start a new sub-phrase

@@ -16,8 +16,6 @@ import Data.List (List, null, filter, toUnfoldable)
 import Data.Maybe (Maybe(..), maybe)
 import Prelude (map, not, ($), (&&), (<), (<>), (>=), (-))
 
-import Debug.Trace (spy, trace, traceM)
-
 -- | build any repeated section into an extended melody with all repeats realised
 buildRepeatedMelody :: List MidiBar -> Sections -> Number -> Melody
 buildRepeatedMelody mbs sections phraseSize =

@@ -20,7 +20,6 @@ import Data.Abc.Melody.Types
 import Data.Abc.Melody.Intro (identifyIntro)
 import Prelude (not, (&&), (==), (>=))
 
-import Debug.Trace (spy, trace, traceM)
 
 -- | initial repeats i.e. no repeats yet
 initialRepeatState :: RepeatState
