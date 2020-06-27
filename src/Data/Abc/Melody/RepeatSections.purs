@@ -195,14 +195,16 @@ setEndPos pos s =
   Section (unwrap s) { end = Just pos }
 
 -- set the first repeat of a section
+-- we assume if it has a first repeat then the overall section is repeated
 firstRepeat :: Int -> Section -> Section
 firstRepeat pos s =
-  Section (unwrap s) { firstEnding = Just pos }
+  Section (unwrap s) { firstEnding = Just pos, isRepeated = true }
 
--- | set the second repeat of a section
+-- set the second repeat of a section
+-- similarky we assume if it has a second repeat then the overall section is repeated
 secondRepeat :: Int -> Section -> Section
 secondRepeat pos s =
-  Section (unwrap s) { secondEnding = Just pos }
+  Section (unwrap s) { secondEnding = Just pos, isRepeated = true  }
 
 -- start a new section
 newSection :: Int -> Boolean -> Section

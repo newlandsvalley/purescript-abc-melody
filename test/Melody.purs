@@ -89,6 +89,7 @@ melodySuite = do
   -- bugSuite
 
 
+
 transformationSuite :: Free TestF Unit
 transformationSuite =
   suite "Melody transformation" do
@@ -189,6 +190,11 @@ repeatSuite =
                                                [noteE 0.0 0.25],
                                                [noteC 0.0 0.25, noteD 0.25 0.25],
                                                [noteF 0.0 0.25] ]
+    test "alternate endings: implied start" do
+      assertMelody "| CD |1 E :|2 F |\r\n"  [ [noteC 0.0 0.25, noteD 0.25 0.25],
+                                              [noteE 0.0 0.25],
+                                              [noteC 0.0 0.25, noteD 0.25 0.25],
+                                              [noteF 0.0 0.25] ]
     test "alternate endings then repeat" do
       assertMelody "|: CD |1 E :|2 F |: CDE :|\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25],
                                                       [noteE 0.0 0.25],
@@ -326,14 +332,11 @@ abcWorkaroundSuite =
 bugSuite :: Free TestF Unit
 bugSuite =
   suite "bugs" do
-    test "crotchet rests" do
-      assertMelodyShortPhrase crotchetRests
-       [ [ noteA 0.0 0.5, rest 0.5 0.5 ],
-         [ noteCs' 0.0 0.5, noteD' 0.5 0.5 ]
-       ]
-    test "quaver rests" do
-      assertMelodyShortPhrase quaverRests
-        []
+    test "alternate endings: implied start" do
+      assertMelody "| CD |1 E :|2 F |\r\n"  [ [noteC 0.0 0.25, noteD 0.25 0.25],
+                                              [noteE 0.0 0.25],
+                                              [noteC 0.0 0.25, noteD 0.25 0.25],
+                                              [noteF 0.0 0.25] ]
 
 
 noteC :: Number -> Number -> MidiNote
