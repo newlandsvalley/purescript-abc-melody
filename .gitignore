@@ -4,6 +4,8 @@
 /deprecated/
 /player/dist/app.js
 /output/
+/.spago/
 /.psc*
 /.psa*
 sections.txt
+.purs-repl
