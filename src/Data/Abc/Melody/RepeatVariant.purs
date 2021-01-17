@@ -1,7 +1,8 @@
 -- | Variant Repeats
 -- |
 -- | support for the ABC volta construction:
--- |    ..|1 ... |2 ...:|3 ....  etc 
+-- |    ..|1 ... :|2 ...:|3 ....  etc 
+-- |
 -- | Up to 8 such variant endings are allowed in any section
 module Data.Abc.Melody.RepeatVariant
   ( initialVariantEndings
@@ -38,7 +39,6 @@ setVariantOf variantNo pos (Section s) =
     variantEndings = fromMaybe s.variantEndings mEndings
   in
   Section s { variantEndings = variantEndings, isRepeated = true  }
-
 
 -- | the total number of variant endings 
 -- | (deemed to stop at the first Nothing 

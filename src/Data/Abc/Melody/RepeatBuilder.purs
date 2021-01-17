@@ -33,14 +33,10 @@ repeatedSection mbs phraseSize acc section =
   if (variantCount section > 1) then 
     (variantSlice mbs phraseSize section) <> acc
   else 
-    simpleRepeatedSection mbs phraseSize acc section
-    
+    simpleRepeatedSection mbs phraseSize acc section    
 
+-- | simple repeated sections with no variants
 simpleRepeatedSection ::  List MidiBar -> Number -> Melody -> Section -> Melody
-{-}
-repeatedSection mbs phraseSize acc (Section { start: Just a, firstEnding: Just b, secondEnding : Just c, end: Just d, isRepeated : _ }) =
-  (variantSlice a b c d mbs phraseSize ) <> acc
--}
 simpleRepeatedSection mbs phraseSize  acc (Section { start: Just a, end: Just d, label: Intro }) =
   (normalisedIntroSlice a d mbs phraseSize) <> acc
 simpleRepeatedSection mbs phraseSize  acc (Section { start: Just a, end: Just d, isRepeated : false }) =
@@ -71,8 +67,7 @@ variantSlice mbs phraseSize section =
       in
         firstSection <> secondSection
     _ -> 
-      []
-  
+      []  
 
 -- | select a subset of MIDI bars
 barSelector :: Int -> Int -> MidiBar -> Boolean

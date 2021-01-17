@@ -17,7 +17,7 @@ import Data.Newtype (unwrap)
 import Data.Tuple (Tuple(..))
 import Data.Abc.Melody.Types
 import Data.Abc.Melody.Intro (identifyIntro)
-import Prelude (not, (&&), (==), (>=))
+import Prelude (not, (&&), (==), (>=), (-))
 import Data.Abc.Melody.RepeatVariant (initialVariantEndings, 
         setVariantOf, variantEndingOf)
 
@@ -33,12 +33,10 @@ initialRepeatState =
 indexBar :: (Maybe Int) -> (Maybe Repeat) -> Int -> RepeatState -> RepeatState
 indexBar iteration repeat barNumber r =
   case (Tuple iteration repeat) of
-    -- |1
-    Tuple (Just 1) _ ->
-      r { current = firstRepeat barNumber r.current}
-    -- |2  or :|2
-    Tuple (Just 2) _ ->
-      r { current = secondRepeat barNumber r.current}
+    -- |n or :|n
+    -- ABC counts from 1, we count variant endings from 0
+    Tuple (Just n) _ ->
+      r { current = setVariantOf (n-1) barNumber r.current}
     -- |:
     Tuple _ (Just Begin) ->
       startSection barNumber r
@@ -191,18 +189,6 @@ setRepeated s =
 setEndPos :: Int -> Section -> Section
 setEndPos pos s =
   Section (unwrap s) { end = Just pos }
-
--- set the first repeat of a section
--- we assume if it has a first repeat then the overall section is repeated
-firstRepeat :: Int -> Section -> Section
-firstRepeat pos s =
-  setVariantOf 0 pos s
-
--- set the second repeat of a section
--- similarly we assume if it has a second repeat then the overall section is repeated
-secondRepeat :: Int -> Section -> Section
-secondRepeat pos s =
-  setVariantOf 1 pos s
 
 -- start a new section
 newSection :: Int -> Boolean -> Section
