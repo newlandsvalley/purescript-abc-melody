@@ -13,8 +13,9 @@ import Data.Abc.Melody.Types (MidiBar, IPhrase, Section(..), Sections, Label(..)
 import Data.Array as Array
 import Data.Foldable (foldl)
 import Data.List (List, null, filter, toUnfoldable)
-import Data.Maybe (Maybe(..), maybe)
-import Prelude (map, not, ($), (&&), (<), (<>), (>=), (-))
+import Data.Maybe (Maybe(..), maybe, fromMaybe)
+import Prelude (map, not, ($), (&&), (<), (<>), (>=), (-), (>))
+import Data.Abc.Melody.RepeatVariant (variantCount, variantEndingOf)
 
 -- | build any repeated section into an extended melody with all repeats realised
 buildRepeatedMelody :: List MidiBar -> Sections -> Number -> Melody
@@ -28,31 +29,50 @@ buildRepeatedMelody mbs sections phraseSize =
 -- | build a repeat section
 -- | this function is intended for use within foldl
 repeatedSection ::  List MidiBar -> Number -> Melody -> Section -> Melody
+repeatedSection mbs phraseSize acc section = 
+  if (variantCount section > 1) then 
+    (variantSlice mbs phraseSize section) <> acc
+  else 
+    simpleRepeatedSection mbs phraseSize acc section
+    
+
+simpleRepeatedSection ::  List MidiBar -> Number -> Melody -> Section -> Melody
+{-}
 repeatedSection mbs phraseSize acc (Section { start: Just a, firstEnding: Just b, secondEnding : Just c, end: Just d, isRepeated : _ }) =
   (variantSlice a b c d mbs phraseSize ) <> acc
-repeatedSection mbs phraseSize  acc (Section { start: Just a, end: Just d, label: Intro }) =
+-}
+simpleRepeatedSection mbs phraseSize  acc (Section { start: Just a, end: Just d, label: Intro }) =
   (normalisedIntroSlice a d mbs phraseSize) <> acc
-repeatedSection mbs phraseSize  acc (Section { start: Just a, end: Just d, isRepeated : false }) =
+simpleRepeatedSection mbs phraseSize  acc (Section { start: Just a, end: Just d, isRepeated : false }) =
   (trackSlice a d mbs phraseSize) <> acc
-repeatedSection mbs phraseSize acc (Section { start: Just a,  end: Just d, isRepeated : true }) =
+simpleRepeatedSection mbs phraseSize acc (Section { start: Just a,  end: Just d, isRepeated : true }) =
   (trackSlice a d mbs phraseSize) <> (trackSlice a d mbs phraseSize) <> acc
-repeatedSection _ _ acc _ =
+simpleRepeatedSection _ _ acc _ =
   acc
 
 -- | take two variant slices of a melody line between start and finish
 -- |    taking account of first repeat and second repeat sections
-variantSlice :: Int -> Int -> Int -> Int -> List MidiBar-> Number ->  Melody
-variantSlice start firstRepeat secondRepeat end mbs phraseSize =
-  let
-    -- save the section of the tune we're interested in
-    section = filter (barSelector start end) mbs
-    -- |: ..... |2
-    -- firstSection = trackSlice start secondRepeat section
-    firstSection = trackSlice start firstRepeat section phraseSize <> trackSlice firstRepeat secondRepeat section phraseSize
-    -- |: .... |1  + |2 ..... :|
-    secondSection = trackSlice start firstRepeat section phraseSize <> trackSlice secondRepeat end section phraseSize
-  in
-    firstSection <> secondSection
+variantSlice :: List MidiBar-> Number -> Section -> Melody
+variantSlice mbs phraseSize section =
+  case section of 
+    Section { start: Just start, end: Just end } -> 
+      let
+        -- save the section of the tune we're interested in 
+        fullSection = filter (barSelector start end) mbs
+        firstEnding = fromMaybe end $ variantEndingOf 0 section
+        secondEnding = fromMaybe end $ variantEndingOf 1 section
+        -- |: ..... |2
+        -- firstSection = trackSlice start secondRepeat section
+        firstSection = trackSlice start firstEnding fullSection phraseSize 
+                      <> trackSlice firstEnding secondEnding fullSection phraseSize
+        -- |: .... |1  + |2 ..... :|
+        secondSection = trackSlice start firstEnding fullSection phraseSize 
+                      <> trackSlice secondEnding end fullSection phraseSize
+      in
+        firstSection <> secondSection
+    _ -> 
+      []
+  
 
 -- | select a subset of MIDI bars
 barSelector :: Int -> Int -> MidiBar -> Boolean

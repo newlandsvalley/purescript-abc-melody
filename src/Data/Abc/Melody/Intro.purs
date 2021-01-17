@@ -11,6 +11,7 @@ import Data.Abc.Melody.Types
 import Data.Array (filter, toUnfoldable)
 import Data.List (filter) as List
 import Data.Maybe (Maybe(..), fromMaybe)
+import Data.Abc.Melody.RepeatVariant (initialVariantEndings, secondEnding)
 import Prelude (map, ($), (+), (-), (>=), (/=), (<>))
 
 appendIntroSections :: RepeatState -> RepeatState
@@ -32,8 +33,8 @@ identifyIntro (Section section) =
     introBars =
       case section.label of
         APart ->
-          case section.secondEnding of
-            -- we have an alterbative ending
+          case secondEnding (Section section) of
+            -- we have an alternative ending
             Just se ->
               -- se markes the first bar of the second ending, so that the first
               -- ending comes immediately before it.  If it's a 2-bar ending, we use
@@ -57,13 +58,13 @@ identifyIntro (Section section) =
 
 -- | convert the intro bars into an entirely artificial list of sections
 -- | so we have it in the correct format for building repeats
+-- | we support the possibility of up to eight variant endings
 makeIntroSections :: Array Int -> Sections
 makeIntroSections introBars =
   let
     makeSection start = Section
       { start : Just start
-      , firstEnding : Nothing
-      , secondEnding : Nothing
+      , variantEndings : initialVariantEndings
       , end : Just (start + 1)
       , isRepeated : false
       , label : Intro

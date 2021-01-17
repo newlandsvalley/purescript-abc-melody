@@ -54,8 +54,7 @@ derive instance eqLabel :: Eq Label
 -- | a section of the tune (possibly repeated)
 newtype Section = Section
     { start :: Maybe Int
-    , firstEnding :: Maybe Int
-    , secondEnding :: Maybe Int
+    , variantEndings :: Array (Maybe Int)
     , end :: Maybe Int
     , isRepeated :: Boolean
     , label :: Label

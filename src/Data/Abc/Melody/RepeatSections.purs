@@ -10,7 +10,6 @@ module Data.Abc.Melody.RepeatSections
         , finalBar
         ) where
 
-
 import Data.Abc (Repeat(..))
 import Data.List (List(..), last, length, (:))
 import Data.Maybe (Maybe(..), isJust, fromMaybe)
@@ -19,7 +18,8 @@ import Data.Tuple (Tuple(..))
 import Data.Abc.Melody.Types
 import Data.Abc.Melody.Intro (identifyIntro)
 import Prelude (not, (&&), (==), (>=))
-
+import Data.Abc.Melody.RepeatVariant (initialVariantEndings, 
+        setVariantOf, variantEndingOf)
 
 -- | initial repeats i.e. no repeats yet
 initialRepeatState :: RepeatState
@@ -177,12 +177,10 @@ labelCurrentSection rs =
     else
       Section current
 
-
-
 -- return true if the first (variant) ending is set
 hasFirstEnding :: Section -> Boolean
 hasFirstEnding s =
-  isJust (unwrap s).firstEnding
+  isJust (variantEndingOf 0 s)
 
 -- set the isRepeated status of a section
 setRepeated :: Section -> Section
@@ -198,20 +196,19 @@ setEndPos pos s =
 -- we assume if it has a first repeat then the overall section is repeated
 firstRepeat :: Int -> Section -> Section
 firstRepeat pos s =
-  Section (unwrap s) { firstEnding = Just pos, isRepeated = true }
+  setVariantOf 0 pos s
 
 -- set the second repeat of a section
--- similarky we assume if it has a second repeat then the overall section is repeated
+-- similarly we assume if it has a second repeat then the overall section is repeated
 secondRepeat :: Int -> Section -> Section
 secondRepeat pos s =
-  Section (unwrap s) { secondEnding = Just pos, isRepeated = true  }
+  setVariantOf 1 pos s
 
 -- start a new section
 newSection :: Int -> Boolean -> Section
 newSection pos isRepeated = Section
   { start : Just pos
-  , firstEnding : Nothing
-  , secondEnding : Nothing
+  , variantEndings : initialVariantEndings
   , end : Just 0
   , isRepeated : isRepeated
   , label : OtherPart   -- effectively unlabelled at the start
