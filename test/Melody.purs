@@ -185,11 +185,19 @@ repeatSuite =
                                          [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
                                          [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]
                                        ]
-    test "alternate endings" do
+    test "2 alternate endings" do
       assertMelody "|: CD |1 E :|2 F |\r\n"  [ [noteC 0.0 0.25, noteD 0.25 0.25],
                                                [noteE 0.0 0.25],
                                                [noteC 0.0 0.25, noteD 0.25 0.25],
                                                [noteF 0.0 0.25] ]
+    test "3 alternate endings" do
+      assertMelody "|: CD |1 E :|2 F :|3 G |\r\n"          
+                                               [ [noteC 0.0 0.25, noteD 0.25 0.25],
+                                               [noteE 0.0 0.25],
+                                               [noteC 0.0 0.25, noteD 0.25 0.25],
+                                               [noteF 0.0 0.25],
+                                               [noteC 0.0 0.25, noteD 0.25 0.25],
+                                               [noteG 0.0 0.25] ]
     test "alternate endings: implied start" do
       assertMelody "| CD |1 E :|2 F |\r\n"  [ [noteC 0.0 0.25, noteD 0.25 0.25],
                                               [noteE 0.0 0.25],

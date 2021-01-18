@@ -5,16 +5,25 @@
 -- |
 -- | Up to 8 such variant endings are allowed in any section
 module Data.Abc.Melody.RepeatVariant
-  ( initialVariantEndings
+  ( activeVariants
+  , initialVariantEndings
   , secondEnding
   , setVariantOf
   , variantEndingOf
+  , variantIndexMax
   , variantCount) where
 
-import Prelude (($), join)
+import Prelude (($), (-), map, join)
 import Data.Abc.Melody.Types (Section(..))
 import Data.Array as Array
-import Data.Maybe (Maybe(..), isJust, fromMaybe)
+import Data.Maybe (Maybe(..), isJust, fromJust, fromMaybe)
+import Partial.Unsafe (unsafePartial)
+
+-- | the active variants - i.e. those non-Nothing entries at the start of the array
+activeVariants :: Section -> Array Int
+activeVariants (Section s) =
+  map (unsafePartial fromJust) $
+    Array.takeWhile isJust s.variantEndings
 
 -- | initialise the variant endings to none - 8 allowed
 initialVariantEndings :: Array (Maybe Int)
@@ -46,3 +55,8 @@ setVariantOf variantNo pos (Section s) =
 variantCount :: Section -> Int
 variantCount (Section s) =
   Array.length $ Array.takeWhile isJust s.variantEndings
+
+-- | the maximum index we can use of the active variants
+variantIndexMax :: Section -> Int
+variantIndexMax section = 
+  variantCount section - 1
