@@ -106,7 +106,7 @@ in  upstream
 -}
 
 let upstream =
-      https://github.com/purescript/package-sets/releases/download/psc-0.13.8-20201204/packages.dhall sha256:89f184cea1ca40630ea34fb68972589b8eedf4809275686aef85f86abaa2145f
+      https://github.com/purescript/package-sets/releases/download/psc-0.13.8-20210118/packages.dhall sha256:a59c5c93a68d5d066f3815a89f398bcf00e130a51cb185b2da29b20e2d8ae115
 
 in  upstream
   with abc-melody =
@@ -121,28 +121,6 @@ in  upstream
      , version =
          "master"
      }
-  with abc-parser =
-    { dependencies =
-        [ "bifunctors"
-        , "effect"
-        , "either"
-        , "foldable-traversable"
-        , "generics-rep"
-        , "maybe"
-        , "midi"
-        , "ordered-collections"
-        , "rationals"
-        , "strings"
-        , "stringutils"
-        , "string-parsers"
-        , "transformers"
-        , "tuples"
-        ]
-   , repo =
-       "https://github.com/newlandsvalley/purescript-abc-parser.git"
-   , version =
-       "v1.8.0"
-   }
    with halogen-components =
      { dependencies =
          [ "console"
@@ -157,15 +135,4 @@ in  upstream
          "https://github.com/newlandsvalley/purescript-halogen-components.git"
      , version =
          "master"
-     }
-   with js-fileio =
-     { dependencies =
-         [ "aff"
-         , "effect"
-         , "prelude"
-         ]
-     , repo =
-         "https://github.com/newlandsvalley/purescript-js-fileio.git"
-     , version =
-         "2.0.3"
      }

@@ -2,10 +2,11 @@
   "private": true,
   "scripts": {
     "build": "spago build",
-    "test": "spago -x ./test.dhall test"
+    "test": "spago -x ./test.dhall test",
+    "player": "spago -x ./player.dhall bundle-app --main Player.Main --to player/dist/app.js"
   },
   "devDependencies": {
-    "spago": "^0.16.0",
+    "spago": "^0.19.0",
     "purescript": "^0.13.8",
     "purescript-psa": "^0.5.1",
     "webpack": "^3.6.0"

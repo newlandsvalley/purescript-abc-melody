@@ -22,6 +22,13 @@ or
      bower install
      pulp build
 
+To build the player example
+---------------------------
+
+     npm run player
+
+and then navigate your browser to player/dist
+
 To Test
 -------
 
