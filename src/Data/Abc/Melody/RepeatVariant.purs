@@ -9,6 +9,7 @@ module Data.Abc.Melody.RepeatVariant
   , initialVariantEndings
   , secondEnding
   , setVariantOf
+  , setVariantList
   , variantEndingOf
   , variantIndexMax
   , variantCount) where
@@ -16,7 +17,8 @@ module Data.Abc.Melody.RepeatVariant
 import Prelude (($), (-), map, join)
 import Data.Abc.Melody.Types (Section(..))
 import Data.Array as Array
-import Data.Maybe (Maybe(..), isJust, fromJust, fromMaybe)
+import Data.Tuple (Tuple(..))
+import Data.Maybe (Maybe(..), isJust, fromJust)
 import Partial.Unsafe (unsafePartial)
 
 -- | the active variants - i.e. those non-Nothing entries at the start of the array
@@ -40,14 +42,26 @@ secondEnding :: Section -> Maybe Int
 secondEnding s = 
   variantEndingOf 1 s
 
--- set the first repeat variant of a section
+-- set a repeat variant of a section
+-- variantNo is the number of the variant
+-- barNo is the bar in which this variant marking is found
 setVariantOf :: Int -> Int -> Section -> Section
-setVariantOf variantNo pos (Section s) =
-  let 
-    mEndings = Array.insertAt variantNo (Just pos) s.variantEndings
-    variantEndings = fromMaybe s.variantEndings mEndings
+setVariantOf variantNo barNo (Section s) =
+  let  
+    variantEndings = updateVariantBarPos s.variantEndings barNo variantNo
   in
   Section s { variantEndings = variantEndings, isRepeated = true  }
+
+ -- set the list of variants having this bar number position
+setVariantList :: Array Int -> Int -> Section -> Section
+setVariantList variants barNo (Section s) =   
+  let 
+    -- the update defintions sets each variant to be associated with the barNo
+    updateDefinition = map (\variantNo -> Tuple variantNo (Just barNo)) variants
+    variantEndings :: Array (Maybe Int)
+    variantEndings = updateAllVariantIndices updateDefinition s.variantEndings
+  in    
+    Section s { variantEndings = variantEndings, isRepeated = true  }
 
 -- | the total number of variant endings 
 -- | (deemed to stop at the first Nothing 
@@ -60,3 +74,18 @@ variantCount (Section s) =
 variantIndexMax :: Section -> Int
 variantIndexMax section = 
   variantCount section - 1
+
+-- update the variant ending for the nominated variant and its bar number position
+-- if it fails for any reason, return the original array of variant positions
+updateVariantBarPos :: Array (Maybe Int) -> Int -> Int -> Array (Maybe Int)
+updateVariantBarPos variantEndings barNo variantNo  = 
+  case Array.updateAt variantNo (Just barNo) variantEndings of 
+    Nothing -> variantEndings 
+    Just updatedEndings -> updatedEndings
+
+-- update a bunch of variant endings with the same bar number position
+updateAllVariantIndices :: Array (Tuple Int (Maybe Int)) -> Array (Maybe Int) -> Array (Maybe Int)
+updateAllVariantIndices barNoUpdates variantEndings =     
+  Array.updateAtIndices barNoUpdates variantEndings 
+
+

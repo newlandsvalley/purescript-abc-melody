@@ -1,8 +1,8 @@
 module Data.Abc.Melody.Types where
 
+import Data.Abc (Volta)
 import Data.List (List)
 import Data.Maybe (Maybe)
-import Data.Abc (Repeat)
 import Data.Generic.Rep
 import Data.Generic.Rep.Eq (genericEq)
 import Data.Generic.Rep.Show (genericShow)
@@ -30,9 +30,10 @@ type IMelody = Array IPhrase
 -- | a bar of MIDI music
 type MidiBar =
   { number :: Int                         -- sequential from zero
-  , repeat :: Maybe Repeat                -- a repeat of some kind
-  , iteration :: Maybe Int                -- an iteration marker  (|1  or |2 etc)
-  , iPhrase :: IPhrase                     -- the notes in the bar
+  , endRepeats :: Int                     -- possibly a repeat of the last section
+  , startRepeats :: Int                   -- possibly a repeat of the section to come
+  , iteration :: Maybe Volta              -- an iteration marker  (|1  or |2 or |1,2 etc.)
+  , iPhrase :: IPhrase                    -- the notes in the bar
   }
 
 type MidiBars = List MidiBar

@@ -109,30 +109,20 @@ let upstream =
       https://github.com/purescript/package-sets/releases/download/psc-0.13.8-20210118/packages.dhall sha256:a59c5c93a68d5d066f3815a89f398bcf00e130a51cb185b2da29b20e2d8ae115
 
 in  upstream
-  with abc-melody =
-     { dependencies =
-         [ "abc-parser"
-         , "effect"
-         , "prelude"
-         , "soundfonts"
-         ]
-     , repo =
-         "https://github.com/newlandsvalley/purescript-abc-melody.git"
-     , version =
-         "master"
-     }
-   with halogen-components =
-     { dependencies =
-         [ "console"
-         , "css"
-         , "effect"
-         , "js-fileio"
-         , "halogen"
-         , "halogen-css"
-         , "soundfonts"
-         ]
-     , repo =
+    with halogen-components =
+       { dependencies =
+          [ "console"
+          , "css"
+          , "effect"
+          , "js-fileio"
+          , "halogen"
+          , "halogen-css"
+          , "soundfonts"
+          ]
+       , repo =
          "https://github.com/newlandsvalley/purescript-halogen-components.git"
-     , version =
+       , version =
          "master"
-     }
+       }
+    with abc-parser.repo = "https://github.com/newlandsvalley/purescript-abc-parser.git"
+    with abc-parser.version = "d7e6996cec3b109746df51c1d39975b5b3e12f57"

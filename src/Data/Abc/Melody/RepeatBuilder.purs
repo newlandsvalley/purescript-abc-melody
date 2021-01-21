@@ -15,7 +15,8 @@ import Data.Array as Array
 import Data.Foldable (foldl)
 import Data.List (List, null, filter, toUnfoldable)
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
-import Prelude (map, not, ($), (&&), (<), (<>), (>=), (+), (-), (>))
+import Prelude (map, not, ($), (&&), (||), (<), (<>), (>=), (<=), (+), (-), (>))
+
 
 -- | build any repeated section into an extended melody with all repeats realised
 buildRepeatedMelody :: List MidiBar -> Sections -> Number -> Melody
@@ -46,7 +47,7 @@ simpleRepeatedSection mbs phraseSize acc (Section { start: Just a,  end: Just d,
 simpleRepeatedSection _ _ acc _ =
   acc
 
-{- previous vetsion limited to 2 variants
+{- previous version limited to 2 variants
 -- | take two variant slices of a melody line between start and finish
 -- | taking account of first repeat and second repeat sections
 variantSlices :: MidiBars -> Number -> Section -> Melody
@@ -111,16 +112,36 @@ variantSlice start end phraseSize section sectionBars index pos =
     firstEnding = fromMaybe start $ variantEndingOf 0 section
     -- this is the current volta we're looking at
     thisEnding = pos
-    -- the end of the volta section is the start of the next volta (if it exists)
-    -- or the end of the section (if it does not)
+    -- this next bit is tricky
+    --
+    -- In the case of 
+    --
+    --     ..|1 ..:|2 ..:|3 ..:|4 ....
+    --
+    -- then each variant takes as its ending the start of the next variant
+    -- except for the final one which must take the end of the enire section.
+    --
+    -- In the case of 
+    --
+    --     ..|1,3  :|2,4 ;|..
+    --
+    -- then this is true, except that also variant 2 must take its ending 
+    -- as the end of the entire section.
+    -- 
+    -- We thus find a candidate ending for the volta (which may not exist).
+    -- We'll use it for any variant other than the last, buut reject it in
+    -- favour of end if the resulting bar position falls before the start
+    -- position of the variant.
+    candidateNextEnding = 
+      fromMaybe start $ variantEndingOf (index + 1) section
     nextEnding :: Int
-    nextEnding = 
-      if (index < variantIndexMax section)
+    nextEnding =     
+      if (index >= variantIndexMax section || candidateNextEnding <= pos)
         then 
-          fromMaybe start $ variantEndingOf (index + 1) section
-        else 
           end
-    {-}
+        else 
+          candidateNextEnding
+    {-     
     _ = spy "index" index
     _ = spy "variant count" (variantCount section)
     _ = spy "max variants" (variantIndexMax section)

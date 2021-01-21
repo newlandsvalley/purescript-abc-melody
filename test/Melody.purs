@@ -89,7 +89,6 @@ melodySuite = do
   -- bugSuite
 
 
-
 transformationSuite :: Free TestF Unit
 transformationSuite =
   suite "Melody transformation" do
@@ -185,12 +184,12 @@ repeatSuite =
                                          [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25],
                                          [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]
                                        ]
-    test "2 alternate endings" do
+    test "2 simple variant endings" do
       assertMelody "|: CD |1 E :|2 F |\r\n"  [ [noteC 0.0 0.25, noteD 0.25 0.25],
                                                [noteE 0.0 0.25],
                                                [noteC 0.0 0.25, noteD 0.25 0.25],
                                                [noteF 0.0 0.25] ]
-    test "3 alternate endings" do
+    test "3 simple variant endings" do
       assertMelody "|: CD |1 E :|2 F :|3 G |\r\n"          
                                                [ [noteC 0.0 0.25, noteD 0.25 0.25],
                                                [noteE 0.0 0.25],
@@ -233,7 +232,11 @@ repeatSuite =
           [ noteD' 0.0 1.25 , noteFs 1.25 0.25 ],
           [ noteG 0.0 0.5, noteD 0.0 0.5, noteA 0.5 1.0, noteA 1.5 1.5 ],
           [ noteG 0.0 0.5, noteD 0.0 0.5, noteA 0.5 1.0 , noteA 1.5 1.5 ]
-        ]
+        ]                                 
+    test "4 simple variant endings ..|1 :|2 :|3 :|4 .." do
+      assertMelody "|: CD |1 E :|2 F :|3 E :|4 F |\r\n" fourVoltas
+    test "2 listed variant endings ..|1,3 |2,4 |.." do
+      assertMelody "|: CD |1,3 E :|2,4 F :|\r\n" fourVoltas
 
 
 graceSuite :: Free TestF Unit
@@ -340,11 +343,8 @@ abcWorkaroundSuite =
 bugSuite :: Free TestF Unit
 bugSuite =
   suite "bugs" do
-    test "alternate endings: implied start" do
-      assertMelody "| CD |1 E :|2 F |\r\n"  [ [noteC 0.0 0.25, noteD 0.25 0.25],
-                                              [noteE 0.0 0.25],
-                                              [noteC 0.0 0.25, noteD 0.25 0.25],
-                                              [noteF 0.0 0.25] ]
+    test "2 listed variant endings" do
+      assertMelody "|: CD |1,3 E :|2,4 F :|\r\n" fourVoltas
 
 
 noteC :: Number -> Number -> MidiNote
@@ -373,7 +373,7 @@ noteD offset length =
   , duration : length
   , gain : gain
   }
-
+  
 noteE :: Number -> Number -> MidiNote
 noteE offset length =
   { channel : 0
@@ -472,3 +472,16 @@ rest offset length =
   , duration : length
   , gain : gain
   }
+
+fourVoltas :: Melody 
+fourVoltas = 
+  [ 
+    [noteC 0.0 0.25, noteD 0.25 0.25],
+    [noteE 0.0 0.25],
+    [noteC 0.0 0.25, noteD 0.25 0.25],
+    [noteF 0.0 0.25],
+    [noteC 0.0 0.25, noteD 0.25 0.25],
+    [noteE 0.0 0.25],
+    [noteC 0.0 0.25, noteD 0.25 0.25],
+    [noteF 0.0 0.25]
+  ]

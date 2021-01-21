@@ -12,8 +12,8 @@ import Data.Abc.Melody.Types
 
 import Audio.SoundFont.Melody (Melody)
 import Control.Monad.State (State, get, put, execState)
-import Data.Abc (AbcNote, AbcRest, AbcTune, Accidental(..), Bar, BarType, BodyPart(..), Broken(..), Grace, GraceableNote, Header(..), Mode(..),
-               ModifiedKeySignature, Music(..), MusicLine, NoteDuration, Pitch(..), PitchClass(..), Repeat(..), RestOrNote, TempoSignature, TuneBody)
+import Data.Abc (AbcNote, AbcRest, AbcTune, Accidental(..), Bar, BarLine, BodyPart(..), Broken(..), Grace, GraceableNote, Header(..), Mode(..),
+               ModifiedKeySignature, Music(..), MusicLine, NoteDuration, Pitch(..), PitchClass(..), RestOrNote, TempoSignature, TuneBody)
 import Data.Abc.Accidentals as Accidentals
 import Data.Abc.Canonical as Canonical
 import Data.Abc.KeySignature (modifiedKeySet, pitchNumber, notesInChromaticScale)
@@ -32,7 +32,7 @@ import Data.List.NonEmpty (head, length, tail, toList) as Nel
 import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
 import Data.Rational (Rational, fromInt, toNumber, (%))
 import Data.Tuple (Tuple(..))
-import Prelude (bind, identity, map, pure, ($), (&&), (*), (+), (-), (/), (<>), (==), (||))
+import Prelude (bind, identity, map, pure, ($), (&&), (*), (+), (-), (/), (<>), (==), (||), (>))
 
 
 -- | The pitch of a note expressed as a MIDI interval.
@@ -101,7 +101,7 @@ buildMelody tstate generateIntro =
 
     -- index the final bar and finalise the repear state
     finalRepeatState =
-      finalBar currentBar.iteration currentBar.repeat currentBar.number tstate.repeatState
+      finalBar currentBar tstate.repeatState
     repeatState =
       if generateIntro then
         appendIntroSections finalRepeatState
@@ -213,21 +213,23 @@ transformMusic m =
         pure Nil
 
 -- | add a bar to the state.  index it and add it to the growing list of bars
-addBarToState :: TState -> BarType -> TState
-addBarToState tstate barType =
+addBarToState :: TState -> BarLine -> TState
+addBarToState tstate barLine =
   -- the current bar held in state is empty so we coalesce
   if (isBarEmpty tstate.currentBar) then
-    coalesceBar tstate barType
+    coalesceBar tstate barLine
   -- it's not emmpty so we initialise the new bar
   else
     let
       currentBar = tstate.currentBar
       repeatState =
-        indexBar currentBar.iteration currentBar.repeat currentBar.number tstate.repeatState
+        indexBar currentBar tstate.repeatState
       -- reset the currentOffset for the next note if we're starting a new section
       currentOffset =
         -- reset the current note offset if there's any kind of repeat or alternate ending marker
-        if isJust barType.repeat || isJust barType.iteration then
+        if barLine.startRepeats > 0 
+           || barLine.endRepeats > 0 
+           ||isJust barLine.iteration then
           0.0
         else
           tstate.currentOffset
@@ -236,7 +238,7 @@ addBarToState tstate barType =
         -- the current bar is not empty so we aggregate the new bar into the track
         currentBar : tstate.rawMelody
     in
-      tstate { currentBar = buildNewBar (currentBar.number + 1) barType
+      tstate { currentBar = buildNewBar (currentBar.number + 1) barLine
              , currentBarAccidentals = Accidentals.empty
              , currentOffset = currentOffset
              , repeatState = repeatState
@@ -245,18 +247,15 @@ addBarToState tstate barType =
 
 -- | coalesce the new bar from ABC with the current one held in the state
 -- | (which has previously been tested for emptiness)
-coalesceBar :: TState -> BarType -> TState
-coalesceBar tstate barType =
+coalesceBar :: TState -> BarLine -> TState
+coalesceBar tstate barLine =
   let
-    barRepeats = Tuple tstate.currentBar.repeat barType.repeat
-    newRepeat = case barRepeats of
-     Tuple (Just End) (Just Begin) ->
-        Just BeginAndEnd
-     Tuple ( Just x) _  ->
-        Just x
-     _ ->
-        barType.repeat
-    bar' = tstate.currentBar { repeat = newRepeat, iteration = barType.iteration }
+    endRepeats = tstate.currentBar.endRepeats + barLine.endRepeats
+    startRepeats = tstate.currentBar.startRepeats + barLine.startRepeats
+    bar' = tstate.currentBar { endRepeats = endRepeats
+                             , startRepeats = startRepeats
+                             , iteration = barLine.iteration 
+                             }
   in
     tstate { currentBar = bar' }
 
@@ -454,9 +453,6 @@ processChordalNote tempoModifier tstate abcNote canPhrase =
       _ ->
         Array.cons newNote tstate.currentBar.iPhrase
 
-
-
-
 -- | emit a MidiNote at the given offset held in TState
 emitNote :: Rational -> TState -> AbcNote -> Boolean -> INote
 emitNote tempoModifier tstate abcNote canPhrase =
@@ -472,7 +468,6 @@ emitNotePlus tempoModifier tstate abcNote extraOffset canPhrase =
       noteDuration tstate.abcTempo (abcNote.duration * tempoModifier)
   in
     iNote (tstate.currentOffset + extraOffset) duration pitch canPhrase
-
 
 -- | emit a rest which is a note without a pitch (id 0)
 emitRest :: Rational -> TState -> AbcRest -> INote
@@ -696,17 +691,19 @@ midiPitchOffset n mks barAccidentals =
 initialBar :: MidiBar
 initialBar =
   { number : 0
-  , repeat : Nothing
+  , endRepeats : 0
+  , startRepeats : 0
   , iteration : Nothing
   , iPhrase : []
   }
 
 -- | build a new bar from a bar number and an ABC bar
-buildNewBar :: Int -> BarType -> MidiBar
-buildNewBar i barType =
+buildNewBar :: Int -> BarLine -> MidiBar
+buildNewBar i barLine =
   {  number : i
-  ,  repeat : barType.repeat
-  ,  iteration : barType.iteration
+  ,  endRepeats : barLine.endRepeats
+  ,  startRepeats : barLine.startRepeats
+  ,  iteration : barLine.iteration
   ,  iPhrase : []
   }
 
