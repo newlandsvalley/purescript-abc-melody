@@ -50,7 +50,7 @@ setVariantOf variantNo barNo (Section s) =
   let  
     variantEndings = updateVariantBarPos s.variantEndings barNo variantNo
   in
-  Section s { variantEndings = variantEndings, isRepeated = true  }
+  Section s { variantEndings = variantEndings, repeatCount = 1  }
 
  -- set the list of variants having this bar number position
 setVariantList :: Array Int -> Int -> Section -> Section
@@ -61,10 +61,7 @@ setVariantList variants barNo (Section s) =
     variantEndings :: Array (Maybe Int)
     variantEndings = updateAllVariantIndices updateDefinition s.variantEndings
   in    
-    Section s { variantEndings = variantEndings, isRepeated = true  }
-
--- | the total number of variant endings 
--- | (deemed to stop at the first Nothing 
+    Section s { variantEndings = variantEndings, repeatCount = 1 }
 -- | i.e. ABC variant numberings must be consecutive)
 variantCount :: Section -> Int
 variantCount (Section s) =

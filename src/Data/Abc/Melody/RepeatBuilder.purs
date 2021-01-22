@@ -38,12 +38,16 @@ repeatedSection mbs phraseSize acc section =
 
 -- | simple repeated sections with no variants
 simpleRepeatedSection ::  MidiBars -> Number -> Melody -> Section -> Melody
+-- an intro
 simpleRepeatedSection mbs phraseSize  acc (Section { start: Just a, end: Just d, label: Intro }) =
   (normalisedIntroSlice a d mbs phraseSize) <> acc
-simpleRepeatedSection mbs phraseSize  acc (Section { start: Just a, end: Just d, isRepeated : false }) =
+-- an unrepeated section
+simpleRepeatedSection mbs phraseSize  acc (Section { start: Just a, end: Just d, repeatCount : 0 }) =
   (trackSlice a d mbs phraseSize) <> acc
-simpleRepeatedSection mbs phraseSize acc (Section { start: Just a,  end: Just d, isRepeated : true }) =
+-- a repeated section
+simpleRepeatedSection mbs phraseSize acc (Section { start: Just a,  end: Just d }) =
   (trackSlice a d mbs phraseSize) <> (trackSlice a d mbs phraseSize) <> acc
+-- something else (unexpected)
 simpleRepeatedSection _ _ acc _ =
   acc
 

@@ -66,7 +66,7 @@ makeIntroSections introBars =
       { start : Just start
       , variantEndings : initialVariantEndings
       , end : Just (start + 1)
-      , isRepeated : false
+      , repeatCount : 0
       , label : Intro
       }
   in

@@ -29,7 +29,6 @@ initialRepeatState =
   , intro : []
   }
 
-
 -- | index a bar by identifying any repeat markings and saving the marking against 
 -- | the bar number
 indexBar :: MidiBar -> RepeatState -> RepeatState
@@ -142,7 +141,7 @@ isDeadSection (Section s) =
     start = fromMaybe 0 s.start
     end = fromMaybe 0 s.end
   in
-    (start >= end) && not s.isRepeated
+    (start >= end) && (s.repeatCount == 0)
 
 -- return true if the saved sections include a lead-in
 hasLeadIn :: Sections -> Boolean
@@ -156,7 +155,7 @@ hasLeadIn sections =
 -- | return true if the current section defines a lead-in bar
 isLeadIn :: Section -> Boolean
 isLeadIn (Section s) =
-  (not s.isRepeated) && (1 == fromMaybe 0 s.end)
+  (s.repeatCount == 0) && (1 == fromMaybe 0 s.end)
 
 isAPart :: Section -> Boolean
 isAPart (Section s) =
@@ -189,9 +188,10 @@ hasFirstEnding s =
   isJust (variantEndingOf 0 s)
 
 -- set the isRepeated status of a section
+-- JMW!!!
 setRepeated :: Section -> Section
 setRepeated s =
-  Section (unwrap s) { isRepeated = true }
+  Section (unwrap s) { repeatCount = 1 }
 
 -- set the end pisition of a section
 setEndPos :: Int -> Section -> Section
@@ -199,14 +199,20 @@ setEndPos pos s =
   Section (unwrap s) { end = Just pos }
 
 -- start a new section
+-- JMW!!!
 newSection :: Int -> Boolean -> Section
-newSection pos isRepeated = Section
-  { start : Just pos
-  , variantEndings : initialVariantEndings
-  , end : Just 0
-  , isRepeated : isRepeated
-  , label : OtherPart   -- effectively unlabelled at the start
-  }
+newSection pos isRepeated = 
+  let 
+    repeatCount = 
+       if isRepeated then 1 else 0
+  in
+    Section
+      { start : Just pos
+      , variantEndings : initialVariantEndings
+      , end : Just 0
+      , repeatCount : repeatCount
+      , label : OtherPart   -- effectively unlabelled at the start
+      }
 
 -- a 'null' section
 nullSection :: Section

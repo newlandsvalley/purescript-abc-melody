@@ -53,11 +53,15 @@ instance showLabel :: Show Label where
 derive instance eqLabel :: Eq Label
 
 -- | a section of the tune (possibly repeated)
+-- | a repeat counts can be:
+-- |  0 - unrepeated 
+-- |  1 - simple repeat (as is the case with voltas)
+-- |  n - multiple repeats (as can be introduced by |:: etc.)
 newtype Section = Section
     { start :: Maybe Int
     , variantEndings :: Array (Maybe Int)
     , end :: Maybe Int
-    , isRepeated :: Boolean
+    , repeatCount :: Int 
     , label :: Label
     }
 
