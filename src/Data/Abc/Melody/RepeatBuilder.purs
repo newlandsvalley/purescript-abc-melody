@@ -17,7 +17,6 @@ import Data.List (List, null, filter, toUnfoldable)
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
 import Prelude (map, not, ($), (&&), (||), (<), (<>), (>=), (<=), (+), (-), (>))
 
-
 -- | build any repeated section into an extended melody with all repeats realised
 buildRepeatedMelody :: List MidiBar -> Sections -> Number -> Melody
 buildRepeatedMelody mbs sections phraseSize =
@@ -39,14 +38,19 @@ repeatedSection mbs phraseSize acc section =
 -- | simple repeated sections with no variants
 simpleRepeatedSection ::  MidiBars -> Number -> Melody -> Section -> Melody
 -- an intro
-simpleRepeatedSection mbs phraseSize  acc (Section { start: Just a, end: Just d, label: Intro }) =
+simpleRepeatedSection mbs phraseSize acc (Section { start: Just a, end: Just d, label: Intro }) =
   (normalisedIntroSlice a d mbs phraseSize) <> acc
 -- an unrepeated section
+-- we could represent this with the next, but I think it's clearer having them separate
 simpleRepeatedSection mbs phraseSize  acc (Section { start: Just a, end: Just d, repeatCount : 0 }) =
   (trackSlice a d mbs phraseSize) <> acc
 -- a repeated section
-simpleRepeatedSection mbs phraseSize acc (Section { start: Just a,  end: Just d }) =
-  (trackSlice a d mbs phraseSize) <> (trackSlice a d mbs phraseSize) <> acc
+simpleRepeatedSection mbs phraseSize acc (Section { start: Just a,  end: Just d, repeatCount : n }) =
+  let 
+    slice = trackSlice a d mbs phraseSize
+    slices = Array.replicate (n+1) slice
+  in 
+    (Array.concat slices) <> acc
 -- something else (unexpected)
 simpleRepeatedSection _ _ acc _ =
   acc

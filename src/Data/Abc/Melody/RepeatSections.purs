@@ -21,6 +21,7 @@ import Prelude (map, not, (&&), (==), (>=), (<=), (-), (>), ($))
 import Data.Abc.Melody.RepeatVariant (initialVariantEndings, 
         setVariantList, setVariantOf, variantEndingOf)
 
+
 -- | initial repeats i.e. no repeats yet
 initialRepeatState :: RepeatState
 initialRepeatState =
@@ -45,11 +46,11 @@ indexBar mb r =
         r { current = setVariantList vsArray mb.number r.current}
     Nothing,  ends,  starts ->    
       if (ends > 0 && starts > 0) then
-        endAndStartSection mb.number true true r
+        endAndStartSection mb.number true starts r
       else if (ends > 0 && starts <= 0) then
         endSection mb.number true r
       else if (ends <= 0 && starts > 0) then
-        startSection mb.number r
+        startSection mb.number starts r
       else 
         r
 
@@ -61,7 +62,7 @@ finalBar mb r =
     repeatState = endSection mb.number isRepeatEnd r
   in
     if not (isDeadSection r.current) then
-      accumulateSection mb.number false repeatState
+      accumulateSection mb.number 0 repeatState
     else
       repeatState      
 
@@ -71,10 +72,10 @@ toOffsetZero i =
   if i <= 0 then 0 else i -1
 
 -- accumulate the last section and start a new section  -}
-startSection :: Int -> RepeatState -> RepeatState
-startSection pos r =
+startSection :: Int -> Int -> RepeatState -> RepeatState
+startSection pos repeatStartCount r =
   -- a start implies an end of the last section
-  endAndStartSection pos false true r
+  endAndStartSection pos false repeatStartCount r
 
 -- end the section.  If there is a first repeat, keep it open, else accumulate it
 -- pos : the bar number marking the end of section
@@ -87,18 +88,20 @@ endSection pos isRepeatEnd r =
     in
       r { current = current }
   else
-     endAndStartSection pos isRepeatEnd false r
+     endAndStartSection pos isRepeatEnd 0 r
 
 -- end the current section, accumulate it and start a new section
-endAndStartSection :: Int -> Boolean -> Boolean -> RepeatState -> RepeatState
-endAndStartSection endPos isRepeatEnd isRepeatStart r =
+endAndStartSection :: Int -> Boolean -> Int -> RepeatState -> RepeatState
+endAndStartSection endPos isRepeatEnd repeatStartCount r =
   let
     -- cater for the situation where the ABC marks the first section of the tune as repeated solely by use
     -- of the End Repeat marker with no such explicit marker at the start of the section - it is implied as the tune start
     current :: Section
     current =
-      if (isRepeatEnd && (unwrap r.current).start == Just 0) then
-        setRepeated r.current
+      if isRepeatEnd 
+         && (unwrap r.current).start == Just 0 
+         && (isUnrepeated r.current)  then
+          setMissingRepeatCount r.current
       else
         r.current
     -- now set the end position from the bar number position
@@ -107,16 +110,16 @@ endAndStartSection endPos isRepeatEnd isRepeatStart r =
     endState :: RepeatState
     endState = r { current = current' }
   in
-    accumulateSection endPos isRepeatStart endState
+    accumulateSection endPos repeatStartCount endState
 
 -- accumulate the current section into the full score and re-initialise it
-accumulateSection :: Int -> Boolean -> RepeatState -> RepeatState
-accumulateSection pos isRepeatStart r =
+accumulateSection :: Int -> Int -> RepeatState -> RepeatState
+accumulateSection pos repeatStartCount r =
   let
     -- label the existing current section to see if it is an Intor or A Part
     existingCurrent = labelCurrentSection r
     -- prepare the new current section
-    newCurrent = newSection pos isRepeatStart
+    newCurrent = newSection pos repeatStartCount
   in
     if not (isDeadSection r.current) then
       if (isAPart existingCurrent) then
@@ -187,11 +190,15 @@ hasFirstEnding :: Section -> Boolean
 hasFirstEnding s =
   isJust (variantEndingOf 0 s)
 
--- set the isRepeated status of a section
--- JMW!!!
-setRepeated :: Section -> Section
-setRepeated s =
-  Section (unwrap s) { repeatCount = 1 }
+-- set the missing repeatedCount status of a section
+setMissingRepeatCount :: Section -> Section
+setMissingRepeatCount (Section s) =
+    Section s { repeatCount = 1 }
+
+-- return true if the repeat count of a section is not set
+isUnrepeated :: Section -> Boolean
+isUnrepeated (Section s) =
+  s.repeatCount == 0
 
 -- set the end pisition of a section
 setEndPos :: Int -> Section -> Section
@@ -199,22 +206,17 @@ setEndPos pos s =
   Section (unwrap s) { end = Just pos }
 
 -- start a new section
--- JMW!!!
-newSection :: Int -> Boolean -> Section
-newSection pos isRepeated = 
-  let 
-    repeatCount = 
-       if isRepeated then 1 else 0
-  in
-    Section
-      { start : Just pos
-      , variantEndings : initialVariantEndings
-      , end : Just 0
-      , repeatCount : repeatCount
-      , label : OtherPart   -- effectively unlabelled at the start
-      }
+newSection :: Int -> Int -> Section
+newSection pos repeatCount = 
+  Section
+    { start : Just pos
+    , variantEndings : initialVariantEndings
+    , end : Just 0
+    , repeatCount : repeatCount
+    , label : OtherPart   -- effectively unlabelled at the start
+    }
 
 -- a 'null' section
 nullSection :: Section
 nullSection =
-  newSection 0 false
+  newSection 0 0
