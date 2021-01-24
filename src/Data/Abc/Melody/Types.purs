@@ -3,12 +3,7 @@ module Data.Abc.Melody.Types where
 import Data.Abc (Volta)
 import Data.List (List)
 import Data.Maybe (Maybe)
-import Data.Generic.Rep
-import Data.Generic.Rep.Eq (genericEq)
-import Data.Generic.Rep.Show (genericShow)
-import Data.Newtype (class Newtype)
 import Prelude (class Eq, class Show)
-
 
 -- | An intermediate note representation
 type INote =
@@ -51,31 +46,3 @@ instance showLabel :: Show Label where
   show OtherPart = "Other Part"
 
 derive instance eqLabel :: Eq Label
-
--- | a section of the tune (possibly repeated)
--- | a repeat counts can be:
--- |  0 - unrepeated 
--- |  1 - simple repeat (as is the case with voltas)
--- |  n - multiple repeats (as can be introduced by |:: etc.)
-newtype Section = Section
-    { start :: Maybe Int
-    , variantEndings :: Array (Maybe Int)
-    , end :: Maybe Int
-    , repeatCount :: Int 
-    , label :: Label
-    }
-
-derive instance newtypeSection :: Newtype Section _
-derive instance genericSection :: Generic Section _
-instance eqSection :: Eq Section where  eq = genericEq
-instance showSection :: Show Section where show = genericShow
-
--- | a set of sections
-type Sections = List Section
-
--- | the current repeat state
-type RepeatState =
-    { current :: Section
-    , sections :: Sections
-    , intro :: Array Int          -- indices of 2 bars that form the intro
-    }

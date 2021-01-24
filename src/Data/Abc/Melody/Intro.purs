@@ -6,12 +6,12 @@ module Data.Abc.Melody.Intro
 -- | and using (where possible) the final bars if the A Part.  These will live
 -- | in different places depending on the kind of repeat.
 
-import Data.Abc.Melody.Types
+import Data.Abc.Repeats.Types (Label(..), RepeatState, Section(..), Sections)
 
 import Data.Array (filter, toUnfoldable)
 import Data.List (filter) as List
 import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Abc.Melody.RepeatVariant (initialVariantEndings, secondEnding)
+import Data.Abc.Repeats.Variant (initialVariantEndings, secondEnding)
 import Prelude (map, ($), (+), (-), (>=), (/=), (<>))
 
 appendIntroSections :: RepeatState -> RepeatState

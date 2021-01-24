@@ -10,7 +10,7 @@ import Data.Array (cons, null, reverse)
 import Data.Foldable (foldl)
 import Audio.SoundFont (MidiNote)
 import Audio.SoundFont.Melody (MidiPhrase, Melody)
-import Data.Abc.Melody.Types
+import Data.Abc.Melody.Types (INote, IPhrase)
 
 type Accumulator =
   { cutoff :: Number               -- the phrase length at which we cut off and start a new sub-phrase

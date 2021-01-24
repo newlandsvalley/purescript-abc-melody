@@ -125,4 +125,4 @@ in  upstream
          "master"
        }
     with abc-parser.repo = "https://github.com/newlandsvalley/purescript-abc-parser.git"
-    with abc-parser.version = "d7e6996cec3b109746df51c1d39975b5b3e12f57"
+    with abc-parser.version = "abad8728deb6666538fb82b23e2bd769a0bf35d6"

@@ -8,9 +8,10 @@ module Data.Abc.Melody.RepeatBuilder
 -- | into small, easily interruptible phrases.
 
 import Audio.SoundFont.Melody (Melody)
+import Data.Abc.Repeats.Types (Section(..), Sections, Label(..))
 import Data.Abc.Melody.Phrasing (rephraseSection)
-import Data.Abc.Melody.RepeatVariant (activeVariants, variantIndexMax, variantCount, variantEndingOf)
-import Data.Abc.Melody.Types (MidiBar, MidiBars, IPhrase, Section(..), Sections, Label(..))
+import Data.Abc.Repeats.Variant (activeVariants, variantIndexMax, variantCount, variantEndingOf)
+import Data.Abc.Melody.Types (MidiBar, MidiBars, IPhrase)
 import Data.Array as Array
 import Data.Foldable (foldl)
 import Data.List (List, null, filter, toUnfoldable)
@@ -54,37 +55,6 @@ simpleRepeatedSection mbs phraseSize acc (Section { start: Just a,  end: Just d,
 -- something else (unexpected)
 simpleRepeatedSection _ _ acc _ =
   acc
-
-{- previous version limited to 2 variants
--- | take two variant slices of a melody line between start and finish
--- | taking account of first repeat and second repeat sections
-variantSlices :: MidiBars -> Number -> Section -> Melody
-variantSlices mbs phraseSize section =
-  case section of 
-    Section { start: Just start, end: Just end } -> 
-      let
-        -- save the section of the tune we're interested in 
-        sectionBars :: MidiBars
-        sectionBars = filter (barSelector start end) mbs
-        firstEnding :: Int
-        firstEnding = fromMaybe start $ variantEndingOf 0 section
-        secondEnding :: Int
-        secondEnding = fromMaybe start $ variantEndingOf 1 section
-        _ = spy "firstEnding" firstEnding
-        _ = spy "secondEnding" secondEnding
-        _ = spy "end" end
-        -- |: ..... |2
-        -- firstSection = trackSlice start secondRepeat section
-        firstSection = trackSlice start firstEnding sectionBars phraseSize 
-                      <> trackSlice firstEnding secondEnding sectionBars phraseSize
-        -- |: .... |1  + |2 ..... :|
-        secondSection = trackSlice start firstEnding sectionBars phraseSize 
-                      <> trackSlice secondEnding end sectionBars phraseSize
-      in
-        firstSection <> secondSection
-    _ -> 
-      []  
--}
 
 variantSlices :: MidiBars -> Number -> Section -> Melody
 variantSlices mbs phraseSize section =

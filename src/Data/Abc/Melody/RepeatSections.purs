@@ -10,17 +10,23 @@ module Data.Abc.Melody.RepeatSections
         , finalBar
         ) where
 
+import Data.Abc.Repeats.Types (Label(..), RepeatState, Section(..), Sections)
 import Data.List (List(..), last, length, (:))
 import Data.Array (fromFoldable)
 import Data.Maybe (Maybe(..), isJust, fromMaybe)
 import Data.Newtype (unwrap)
 import Data.Abc (Volta(..))
-import Data.Abc.Melody.Types
 import Data.Abc.Melody.Intro (identifyIntro)
 import Prelude (map, not, (&&), (==), (>=), (<=), (-), (>), ($))
-import Data.Abc.Melody.RepeatVariant (initialVariantEndings, 
+import Data.Abc.Repeats.Variant (initialVariantEndings, 
         setVariantList, setVariantOf, variantEndingOf)
 
+-- | support extensible records for different possible melody forms in the rest
+type IndexedBar rest = 
+    { number :: Int
+    , endRepeats :: Int
+    , startRepeats :: Int
+    , iteration :: Maybe Volta | rest }
 
 -- | initial repeats i.e. no repeats yet
 initialRepeatState :: RepeatState
@@ -32,46 +38,52 @@ initialRepeatState =
 
 -- | index a bar by identifying any repeat markings and saving the marking against 
 -- | the bar number
-indexBar :: MidiBar -> RepeatState -> RepeatState
-indexBar mb r =
-  case mb.iteration, mb.endRepeats, mb.startRepeats of
-    -- |1
-    Just (Volta n), _ , _ ->
-        r { current = setVariantOf (toOffsetZero n) mb.number r.current}
+indexBar :: forall melody. IndexedBar melody
+         -> RepeatState 
+         -> RepeatState
+indexBar bar r =
+  case bar.iteration, bar.endRepeats, bar.startRepeats of
+    -- |1 or |2 etc
+    Just (Volta n), _ , _ ->    
+      r { current = setVariantOf (toOffsetZero n) bar.number r.current}
     -- | 1,2 etc 
     Just (VoltaList vs), _ , _ ->
       let 
         vsArray = map toOffsetZero $ fromFoldable vs
       in
-        r { current = setVariantList vsArray mb.number r.current}
+        r { current = setVariantList vsArray bar.number r.current}
+    -- |: or :| or |
     Nothing,  ends,  starts ->    
       if (ends > 0 && starts > 0) then
-        endAndStartSection mb.number true starts r
+        endAndStartSection bar.number true starts r
       else if (ends > 0 && starts <= 0) then
-        endSection mb.number true r
+        endSection bar.number true r
       else if (ends <= 0 && starts > 0) then
-        startSection mb.number starts r
+        startSection bar.number starts r
       else 
         r
 
-{-| accumulate any residual current state from the final bar in the tune -}
-finalBar :: MidiBar -> RepeatState -> RepeatState
-finalBar mb r =
+-- | accumulate any residual current state from the final bar in the tune 
+finalBar :: forall melody. IndexedBar melody
+         -> RepeatState 
+         -> RepeatState
+finalBar bar r =
   let
-    isRepeatEnd = mb.endRepeats > 0 
-    repeatState = endSection mb.number isRepeatEnd r
+    isRepeatEnd = bar.endRepeats > 0 
+    repeatState = endSection bar.number isRepeatEnd r
   in
     if not (isDeadSection r.current) then
-      accumulateSection mb.number 0 repeatState
+      accumulateSection bar.number 0 repeatState
     else
-      repeatState      
+      repeatState
+
 
 -- | volta repeat markers are wrt offset 1 - reduce to 0
 toOffsetZero :: Int -> Int 
 toOffsetZero i =
   if i <= 0 then 0 else i -1
 
--- accumulate the last section and start a new section  -}
+-- accumulate the last section and start a new section  
 startSection :: Int -> Int -> RepeatState -> RepeatState
 startSection pos repeatStartCount r =
   -- a start implies an end of the last section
