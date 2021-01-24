@@ -4,6 +4,9 @@
 -- |    |: ABC :: DEF :|
 -- |    |: ABC |1 de :|2 fg |
 -- | the very first repeat start marker is optional and often absent
+-- |
+-- | We can't reuse the Midi.RepeatSections module from abc-parser 
+-- | because we need to deal with intros which is ignored in the MIDI implementation
 module Data.Abc.Melody.RepeatSections
         ( initialRepeatState
         , indexBar
@@ -13,13 +16,14 @@ module Data.Abc.Melody.RepeatSections
 import Data.Abc.Repeats.Types (Label(..), RepeatState, Section(..), Sections)
 import Data.List (List(..), last, length, (:))
 import Data.Array (fromFoldable)
-import Data.Maybe (Maybe(..), isJust, fromMaybe)
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (unwrap)
 import Data.Abc (Volta(..))
+import Data.Abc.Repeats.Section (hasFirstEnding, isDeadSection, isUnrepeated, newSection, 
+         nullSection, setEndPos, setMissingRepeatCount, toOffsetZero)
 import Data.Abc.Melody.Intro (identifyIntro)
-import Prelude (map, not, (&&), (==), (>=), (<=), (-), (>), ($))
-import Data.Abc.Repeats.Variant (initialVariantEndings, 
-        setVariantList, setVariantOf, variantEndingOf)
+import Prelude (map, not, (&&), (==), (<=), (>), ($))
+import Data.Abc.Repeats.Variant (setVariantList, setVariantOf)
 
 -- | support extensible records for different possible melody forms in the rest
 type IndexedBar rest = 
@@ -76,12 +80,6 @@ finalBar bar r =
       accumulateSection bar.number 0 repeatState
     else
       repeatState
-
-
--- | volta repeat markers are wrt offset 1 - reduce to 0
-toOffsetZero :: Int -> Int 
-toOffsetZero i =
-  if i <= 0 then 0 else i -1
 
 -- accumulate the last section and start a new section  
 startSection :: Int -> Int -> RepeatState -> RepeatState
@@ -149,15 +147,6 @@ accumulateSection pos repeatStartCount r =
     else
       r { current = newCurrent }
 
--- return true if the section is devoid of any useful content
-isDeadSection :: Section -> Boolean
-isDeadSection (Section s) =
-  let
-    start = fromMaybe 0 s.start
-    end = fromMaybe 0 s.end
-  in
-    (start >= end) && (s.repeatCount == 0)
-
 -- return true if the saved sections include a lead-in
 hasLeadIn :: Sections -> Boolean
 hasLeadIn sections =
@@ -196,39 +185,3 @@ labelCurrentSection rs =
         Section current { label = APart }
     else
       Section current
-
--- return true if the first (variant) ending is set
-hasFirstEnding :: Section -> Boolean
-hasFirstEnding s =
-  isJust (variantEndingOf 0 s)
-
--- set the missing repeatedCount status of a section
-setMissingRepeatCount :: Section -> Section
-setMissingRepeatCount (Section s) =
-    Section s { repeatCount = 1 }
-
--- return true if the repeat count of a section is not set
-isUnrepeated :: Section -> Boolean
-isUnrepeated (Section s) =
-  s.repeatCount == 0
-
--- set the end pisition of a section
-setEndPos :: Int -> Section -> Section
-setEndPos pos s =
-  Section (unwrap s) { end = Just pos }
-
--- start a new section
-newSection :: Int -> Int -> Section
-newSection pos repeatCount = 
-  Section
-    { start : Just pos
-    , variantEndings : initialVariantEndings
-    , end : Just 0
-    , repeatCount : repeatCount
-    , label : OtherPart   -- effectively unlabelled at the start
-    }
-
--- a 'null' section
-nullSection :: Section
-nullSection =
-  newSection 0 0
