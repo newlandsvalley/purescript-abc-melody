@@ -10,12 +10,13 @@ module Data.Abc.Melody.RepeatBuilder
 import Audio.SoundFont.Melody (Melody)
 import Data.Abc.Repeats.Types (Section(..), Sections, Label(..))
 import Data.Abc.Melody.Phrasing (rephraseSection)
-import Data.Abc.Repeats.Variant (activeVariants, variantIndexMax, variantCount, variantEndingOf)
+import Data.Abc.Repeats.Variant (activeVariants, variantIndexMax, variantCount, variantPositionOf)
 import Data.Abc.Melody.Types (MidiBar, MidiBars, IPhrase)
 import Data.Array as Array
 import Data.Foldable (foldl)
 import Data.List (List, null, filter, toUnfoldable)
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
+import Data.Tuple (Tuple(..))
 import Prelude (map, not, ($), (&&), (||), (<), (<>), (>=), (<=), (+), (-), (>))
 
 -- | build any repeated section into an extended melody with all repeats realised
@@ -70,7 +71,7 @@ accumulateSlices mbs start end phraseSize section  =
   let 
     sectionBars :: MidiBars
     sectionBars = filter (barSelector start end) mbs
-    slices = Array.mapWithIndex
+    slices = map
               (variantSlice start end phraseSize section sectionBars)
               (activeVariants section)
   in 
@@ -81,15 +82,17 @@ accumulateSlices mbs start end phraseSize section  =
 -- index is the current index into the array of varianty endings 
 -- pos is the value at the current index
 -- we need to use indexed methods because we need to look up the next index position
-variantSlice :: Int -> Int -> Number -> Section -> MidiBars -> Int -> Int -> Melody 
-variantSlice start end phraseSize section sectionBars index pos = 
+variantSlice :: Int -> Int -> Number -> Section -> MidiBars -> Tuple Int Int -> Melody 
+variantSlice start end phraseSize section sectionBars (Tuple index pos) = 
   let
     -- the first slice is the main tune section which is always from the 
     -- start to the first volta 
     firstEnding :: Int
-    firstEnding = fromMaybe start $ variantEndingOf 0 section
+    firstEnding = fromMaybe start $ variantPositionOf 0 section
     -- this is the current volta we're looking at
     thisEnding = pos
+    -- these are all the active variants for this section 
+    sectionVariants = activeVariants section
     -- this next bit is tricky
     --
     -- In the case of 
@@ -105,13 +108,23 @@ variantSlice start end phraseSize section sectionBars index pos =
     --
     -- then this is true, except that also variant 2 must take its ending 
     -- as the end of the entire section.
+    --
+    -- In the case of 
+    --
+    --     ..|1,2,3  :|4 ;|..
+    --
+    -- then each of 1,2,3 take their ending as 4 whilst 4 itself takes the end of tune.
     -- 
     -- We thus find a candidate ending for the volta (which may not exist).
     -- We'll use it for any variant other than the last, buut reject it in
     -- favour of end if the resulting bar position falls before the start
     -- position of the variant.
+    {-}
+    nextInThisVariantSet = 
+      Array.elem (index +1) sectionVariants
+    -}
     candidateNextEnding = 
-      fromMaybe start $ variantEndingOf (index + 1) section
+      fromMaybe start $ variantPositionOf (index + 1) section
     nextEnding :: Int
     nextEnding =     
       if (index >= variantIndexMax section || candidateNextEnding <= pos)

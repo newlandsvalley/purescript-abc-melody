@@ -10,8 +10,9 @@ import Data.Abc.Repeats.Types (Label(..), RepeatState, Section(..), Sections)
 
 import Data.Array (filter, toUnfoldable)
 import Data.List (filter) as List
+import Data.Map (empty)
 import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Abc.Repeats.Variant (initialVariantEndings, secondEnding)
+import Data.Abc.Repeats.Variant (secondVariantPosition)
 import Prelude (map, ($), (+), (-), (>=), (/=), (<>))
 
 appendIntroSections :: RepeatState -> RepeatState
@@ -33,7 +34,7 @@ identifyIntro (Section section) =
     introBars =
       case section.label of
         APart ->
-          case secondEnding (Section section) of
+          case secondVariantPosition (Section section) of
             -- we have an alternative ending
             Just se ->
               -- se markes the first bar of the second ending, so that the first
@@ -64,7 +65,7 @@ makeIntroSections introBars =
   let
     makeSection start = Section
       { start : Just start
-      , variantEndings : initialVariantEndings
+      , variantPositions : empty
       , end : Just (start + 1)
       , repeatCount : 0
       , label : Intro

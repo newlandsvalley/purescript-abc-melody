@@ -78,7 +78,7 @@ assertIntro s expected =
 
 melodySuite :: Free TestF Unit
 melodySuite = do
-{--}
+{- -}
   transformationSuite
   repeatSuite
   graceSuite
@@ -90,7 +90,7 @@ melodySuite = do
 
   -- bugSuite
 
-{- -}
+
 transformationSuite :: Free TestF Unit
 transformationSuite =
   suite "Melody transformation" do
@@ -346,14 +346,13 @@ abcWorkaroundSuite =
       -- if the note following the tie has grace notes, the tie is ignored
       assertMelody "| CD-{E}DE |\r\n" [ [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.025, noteD 0.525 0.225, noteE 0.75 0.25]]
 
-{--}
+
 
 bugSuite :: Free TestF Unit
 bugSuite =
-  suite "bugs" do
-    test "simple repeat" do
-      assertMelody "|: CDE :|\r\n" [[noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25], 
-                                    [noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25]]
+  suite "bugs" do                              
+    test "4 complex variant endings ..|1,2,3 :|4 .." do
+      assertMelody "|: CD |1,2,3 E :|4 F :|\r\n" fourVoltas
 
 
 noteC :: Number -> Number -> MidiNote
@@ -494,3 +493,17 @@ fourVoltas =
     [noteC 0.0 0.25, noteD 0.25 0.25],
     [noteF 0.0 0.25]
   ]
+
+fourVoltasComplex :: Melody 
+fourVoltasComplex = 
+  [ 
+    [noteC 0.0 0.25, noteD 0.25 0.25],
+    [noteE 0.0 0.25],
+    [noteC 0.0 0.25, noteD 0.25 0.25],
+    [noteE 0.0 0.25],
+    [noteC 0.0 0.25, noteD 0.25 0.25],
+    [noteE 0.0 0.25],
+    [noteC 0.0 0.25, noteD 0.25 0.25],
+    [noteF 0.0 0.25]
+  ]
+
