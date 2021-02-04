@@ -8,16 +8,17 @@ module Data.Abc.Melody.RepeatBuilder
 -- | into small, easily interruptible phrases.
 
 import Audio.SoundFont.Melody (Melody)
-import Data.Abc.Repeats.Types (Section(..), Sections, Label(..))
 import Data.Abc.Melody.Phrasing (rephraseSection)
-import Data.Abc.Repeats.Variant (activeVariants, variantIndexMax, variantCount, variantPositionOf)
 import Data.Abc.Melody.Types (MidiBar, MidiBars, IPhrase)
+import Data.Abc.Repeats.Types (BarNo, Section(..), Sections, Label(..))
+import Data.Abc.Repeats.Variant (activeVariants, findEndingPosition, variantCount, variantPositionOf)
 import Data.Array as Array
 import Data.Foldable (foldl)
 import Data.List (List, null, filter, toUnfoldable)
 import Data.Maybe (Maybe(..), maybe, fromMaybe)
+import Data.Newtype (unwrap)
 import Data.Tuple (Tuple(..))
-import Prelude (map, not, ($), (&&), (||), (<), (<>), (>=), (<=), (+), (-), (>))
+import Prelude (map, not, ($), (&&), (<), (<>), (>=), (+), (-), (>))
 
 -- | build any repeated section into an extended melody with all repeats realised
 buildRepeatedMelody :: List MidiBar -> Sections -> Number -> Melody
@@ -66,7 +67,7 @@ variantSlices mbs phraseSize section =
       []  
 
 -- accumulate all the slices for the variant endings
-accumulateSlices :: MidiBars -> Int -> Int -> Number -> Section ->  Melody 
+accumulateSlices :: MidiBars -> BarNo -> BarNo -> Number -> Section ->  Melody 
 accumulateSlices mbs start end phraseSize section  = 
   let 
     sectionBars :: MidiBars
@@ -82,17 +83,15 @@ accumulateSlices mbs start end phraseSize section  =
 -- index is the current index into the array of varianty endings 
 -- pos is the value at the current index
 -- we need to use indexed methods because we need to look up the next index position
-variantSlice :: Int -> Int -> Number -> Section -> MidiBars -> Tuple Int Int -> Melody 
+variantSlice :: BarNo -> BarNo -> Number -> Section -> MidiBars -> Tuple Int BarNo -> Melody 
 variantSlice start end phraseSize section sectionBars (Tuple index pos) = 
   let
     -- the first slice is the main tune section which is always from the 
     -- start to the first volta 
-    firstEnding :: Int
+    firstEnding :: BarNo
     firstEnding = fromMaybe start $ variantPositionOf 0 section
     -- this is the current volta we're looking at
     thisEnding = pos
-    -- these are all the active variants for this section 
-    sectionVariants = activeVariants section
     -- this next bit is tricky
     --
     -- In the case of 
@@ -119,19 +118,9 @@ variantSlice start end phraseSize section sectionBars (Tuple index pos) =
     -- We'll use it for any variant other than the last, buut reject it in
     -- favour of end if the resulting bar position falls before the start
     -- position of the variant.
-    {-}
-    nextInThisVariantSet = 
-      Array.elem (index +1) sectionVariants
-    -}
-    candidateNextEnding = 
-      fromMaybe start $ variantPositionOf (index + 1) section
-    nextEnding :: Int
-    nextEnding =     
-      if (index >= variantIndexMax section || candidateNextEnding <= pos)
-        then 
-          end
-        else 
-          candidateNextEnding
+
+    -- find the end bar number position of the repeat at this index
+    nextEnding = findEndingPosition (unwrap section).variantPositions index end
     {-     
     _ = spy "index" index
     _ = spy "variant count" (variantCount section)
@@ -145,12 +134,12 @@ variantSlice start end phraseSize section sectionBars (Tuple index pos) =
       <> trackSlice thisEnding nextEnding sectionBars phraseSize
 
 -- | select a subset of MIDI bars
-barSelector :: Int -> Int -> MidiBar -> Boolean
+barSelector :: BarNo -> BarNo -> MidiBar -> Boolean
 barSelector strt fin mb =
   mb.number >= strt && mb.number < fin
 
 -- | build the notes from a subsection of the track
-trackSlice :: Int -> Int -> MidiBars -> Number -> Melody
+trackSlice :: BarNo -> BarNo -> MidiBars -> Number -> Melody
 trackSlice start finish mbs phraseSize  =
   accumulateMessages phraseSize $ filter (barSelector start finish) mbs
 
@@ -164,7 +153,7 @@ accumulateMessages phraseSize mbs  =
 
 -- | build the notes from the repurposed track slice so as to form an
 -- | intro.  This requires normalising the notes
-normalisedIntroSlice :: Int -> Int -> MidiBars -> Number -> Melody
+normalisedIntroSlice :: BarNo -> BarNo -> MidiBars -> Number -> Melody
 normalisedIntroSlice start finish mbs phraseSize =
   accumulateAndNormaliseMessages phraseSize $ filter (barSelector start finish) mbs
 

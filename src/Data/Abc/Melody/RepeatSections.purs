@@ -13,7 +13,7 @@ module Data.Abc.Melody.RepeatSections
         , finalBar
         ) where
 
-import Data.Abc.Repeats.Types (Label(..), RepeatState, Section(..), Sections)
+import Data.Abc.Repeats.Types (BarNo, Label(..), RepeatState, Section(..), Sections)
 import Data.List (List(..), last, length, (:))
 import Data.Array (fromFoldable)
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -23,11 +23,11 @@ import Data.Abc.Repeats.Section (hasFirstEnding, isDeadSection, isUnrepeated, ne
          nullSection, setEndPos, setMissingRepeatCount, toOffsetZero)
 import Data.Abc.Melody.Intro (identifyIntro)
 import Prelude (map, not, (&&), (==), (<=), (>), ($))
-import Data.Abc.Repeats.Variant (setVariantList, setVariantOf)
+import Data.Abc.Repeats.Variant (addVariantList, addVariantOf)
 
 -- | support extensible records for different possible melody forms in the rest
 type IndexedBar rest = 
-    { number :: Int
+    { number :: BarNo
     , endRepeats :: Int
     , startRepeats :: Int
     , iteration :: Maybe Volta | rest }
@@ -49,13 +49,13 @@ indexBar bar r =
   case bar.iteration, bar.endRepeats, bar.startRepeats of
     -- |1 or |2 etc
     Just (Volta n), _ , _ ->    
-      r { current = setVariantOf (toOffsetZero n) bar.number r.current}
+      r { current = addVariantOf (toOffsetZero n) bar.number r.current}
     -- | 1,2 etc 
     Just (VoltaList vs), _ , _ ->
       let 
         vsArray = map toOffsetZero $ fromFoldable vs
       in
-        r { current = setVariantList vsArray bar.number r.current}
+        r { current = addVariantList vsArray bar.number r.current}
     -- |: or :| or |
     Nothing,  ends,  starts ->    
       if (ends > 0 && starts > 0) then
@@ -82,7 +82,7 @@ finalBar bar r =
       repeatState
 
 -- accumulate the last section and start a new section  
-startSection :: Int -> Int -> RepeatState -> RepeatState
+startSection :: BarNo -> Int -> RepeatState -> RepeatState
 startSection pos repeatStartCount r =
   -- a start implies an end of the last section
   endAndStartSection pos false repeatStartCount r
@@ -90,7 +90,7 @@ startSection pos repeatStartCount r =
 -- end the section.  If there is a first repeat, keep it open, else accumulate it
 -- pos : the bar number marking the end of section
 -- isRepeatEnd : True if invoked with a known Repeat End marker in the bar line
-endSection :: Int -> Boolean -> RepeatState -> RepeatState
+endSection :: BarNo -> Boolean -> RepeatState -> RepeatState
 endSection pos isRepeatEnd r =
   if (hasFirstEnding r.current) then
     let
@@ -101,7 +101,7 @@ endSection pos isRepeatEnd r =
      endAndStartSection pos isRepeatEnd 0 r
 
 -- end the current section, accumulate it and start a new section
-endAndStartSection :: Int -> Boolean -> Int -> RepeatState -> RepeatState
+endAndStartSection :: BarNo -> Boolean -> Int -> RepeatState -> RepeatState
 endAndStartSection endPos isRepeatEnd repeatStartCount r =
   let
     -- cater for the situation where the ABC marks the first section of the tune as repeated solely by use
@@ -123,7 +123,7 @@ endAndStartSection endPos isRepeatEnd repeatStartCount r =
     accumulateSection endPos repeatStartCount endState
 
 -- accumulate the current section into the full score and re-initialise it
-accumulateSection :: Int -> Int -> RepeatState -> RepeatState
+accumulateSection :: BarNo -> Int -> RepeatState -> RepeatState
 accumulateSection pos repeatStartCount r =
   let
     -- label the existing current section to see if it is an Intor or A Part
