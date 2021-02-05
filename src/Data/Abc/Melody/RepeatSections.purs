@@ -15,22 +15,22 @@ module Data.Abc.Melody.RepeatSections
 
 import Data.Abc.Repeats.Types (BarNo, Label(..), RepeatState, Section(..), Sections)
 import Data.List (List(..), last, length, (:))
-import Data.Array (fromFoldable)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (unwrap)
-import Data.Abc (Volta(..))
+import Data.List.NonEmpty (NonEmptyList)
+import Data.Abc (Volta)
 import Data.Abc.Repeats.Section (hasFirstEnding, isDeadSection, isUnrepeated, newSection, 
          nullSection, setEndPos, setMissingRepeatCount, toOffsetZero)
 import Data.Abc.Melody.Intro (identifyIntro)
 import Prelude (map, not, (&&), (==), (<=), (>), ($))
-import Data.Abc.Repeats.Variant (addVariantList, addVariantOf)
+import Data.Abc.Repeats.Variant (addVariants, normaliseVoltas)
 
 -- | support extensible records for different possible melody forms in the rest
 type IndexedBar rest = 
     { number :: BarNo
     , endRepeats :: Int
     , startRepeats :: Int
-    , iteration :: Maybe Volta | rest }
+    , iteration :: Maybe  (NonEmptyList Volta)  | rest }    
 
 -- | initial repeats i.e. no repeats yet
 initialRepeatState :: RepeatState
@@ -47,15 +47,14 @@ indexBar :: forall melody. IndexedBar melody
          -> RepeatState
 indexBar bar r =
   case bar.iteration, bar.endRepeats, bar.startRepeats of
-    -- |1 or |2 etc
-    Just (Volta n), _ , _ ->    
-      r { current = addVariantOf (toOffsetZero n) bar.number r.current}
-    -- | 1,2 etc 
-    Just (VoltaList vs), _ , _ ->
+
+    Just voltas, _ , _ ->  
       let 
-        vsArray = map toOffsetZero $ fromFoldable vs
+        vsList = map toOffsetZero $ normaliseVoltas voltas
+        {- _ = spy "normalised volta numbers" vsList -}
       in
-        r { current = addVariantList vsArray bar.number r.current}
+        r { current = addVariants vsList bar.number r.current}   
+
     -- |: or :| or |
     Nothing,  ends,  starts ->    
       if (ends > 0 && starts > 0) then

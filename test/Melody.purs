@@ -246,7 +246,9 @@ repeatSuite =
     test "2 listed variant endings ..|1,3 |2,4 |.." do
       assertMelody "|: CD |1,3 E :|2,4 F :|\r\n" fourVoltas                          
     test "4 complex variant endings ..|1,2,3 :|4 .." do
-      assertMelody "|: CD |1,2,3 E :|4 F |\r\n" fourVoltasComplex
+      assertMelody "|: CD |1,2,3 E :|4 F |\r\n" fourVoltasComplex                        
+    test "4 complex variant endings ..|1-3 :|4 .." do
+      assertMelody "|: CD |1-3 E :|4 F |\r\n" fourVoltasComplex
 
 
 graceSuite :: Free TestF Unit

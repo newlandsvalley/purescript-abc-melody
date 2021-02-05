@@ -2,6 +2,7 @@ module Data.Abc.Melody.Types where
 
 import Data.Abc (Volta)
 import Data.List (List)
+import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe)
 import Prelude (class Eq, class Show)
 
@@ -24,11 +25,11 @@ type IMelody = Array IPhrase
 
 -- | a bar of MIDI music
 type MidiBar =
-  { number :: Int                         -- sequential from zero
-  , endRepeats :: Int                     -- possibly a repeat of the last section
-  , startRepeats :: Int                   -- possibly a repeat of the section to come
-  , iteration :: Maybe Volta              -- an iteration marker  (|1  or |2 or |1,2 etc.)
-  , iPhrase :: IPhrase                    -- the notes in the bar
+  { number :: Int                              -- sequential from zero
+  , endRepeats :: Int                          -- possibly a repeat of the last section
+  , startRepeats :: Int                        -- possibly a repeat of the section to come
+  , iteration ::  Maybe (NonEmptyList Volta)   -- an iteration volta marker  (|1  or |2 or |1-3 etc)
+  , iPhrase :: IPhrase                         -- the notes in the bar
   }
 
 type MidiBars = List MidiBar
