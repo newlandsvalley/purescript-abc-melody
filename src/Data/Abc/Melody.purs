@@ -21,7 +21,6 @@ import Data.Abc.KeySignature (modifiedKeySet, pitchNumber, notesInChromaticScale
 import Data.Abc.Melody.Intro (appendIntroSections)
 import Data.Abc.Melody.RepeatBuilder (buildRepeatedMelody)
 import Data.Abc.Melody.RepeatSections (initialRepeatState, indexBar, finalBar)
--- import Data.Abc.Repeats.Section (initialRepeatState, indexBar, finalBar)
 import Data.Abc.Metadata (dotFactor, getKeySig)
 import Data.Abc.Tempo (AbcTempo, getAbcTempo, setBpm, beatsPerSecond)
 import Data.Array as Array
@@ -35,7 +34,6 @@ import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
 import Data.Rational (Rational, fromInt, toNumber, (%))
 import Data.Tuple (Tuple(..))
 import Prelude (bind, identity, map, pure, ($), (&&), (*), (+), (-), (/), (<>), (==), (||), (>))
-
 
 -- | The pitch of a note expressed as a MIDI interval.
 type MidiPitch =
@@ -180,8 +178,8 @@ transformMusic m =
     Rest r ->
       updateState (addRestToState (1 % 1)) r
 
-    Tuplet maybeGrace signature restsOrNotes ->
-      updateState (addTupletContentsToState maybeGrace (signature.q % signature.p)) restsOrNotes
+    Tuplet t ->
+      updateState (addTupletContentsToState t.maybeGrace (t.signature.q % t.signature.p)) t.restsOrNotes
 
     Chord abcChord ->
       let
