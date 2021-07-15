@@ -16,7 +16,6 @@ import Control.Monad.State (State, get, put, execState)
 import Data.Abc (AbcNote, AbcRest, AbcTune, Accidental(..), Bar, BarLine, BodyPart(..), Broken(..), Grace, GraceableNote, Header(..), Mode(..),
                ModifiedKeySignature, Music(..), MusicLine, NoteDuration, Pitch(..), PitchClass(..), RestOrNote, TempoSignature, TuneBody)
 import Data.Abc.Accidentals as Accidentals
-import Data.Abc.Canonical as Canonical
 import Data.Abc.KeySignature (modifiedKeySet, pitchNumber, notesInChromaticScale)
 import Data.Abc.Melody.Intro (appendIntroSections)
 import Data.Abc.Melody.RepeatBuilder (buildRepeatedMelody)
@@ -108,8 +107,10 @@ buildMelody tstate generateIntro =
       else
         finalRepeatState
     -- ensure we incorporate the very last bar
+    {-
     tstate' = tstate { rawMelody = tstate.currentBar : tstate.rawMelody
                      , repeatState = repeatState }
+    -}
     rawMelody = currentBar : tstate.rawMelody
     -- foo1 = spy "final repeat sections"  finalRepeatState
     -- foo2 = spy "repeat sections after intro"  tstate'.repeatState.sections
@@ -330,7 +331,6 @@ processNoteWithTie :: Rational -> TState -> GraceableNote -> Tuple IPhrase (Mayb
 processNoteWithTie tempoModifier tstate graceableNote =
   let
     abcNote = graceableNote.abcNote
-    maybeGrace = graceableNote.maybeGrace
   in
     case tstate.lastNoteTied of
       Just lastNote ->
@@ -678,8 +678,10 @@ midiPitchOffset n mks barAccidentals =
           n.accidental
 
     -- the lookup pattern just uses sharps or flats (if there) or the empty String if not
+    {- what is this for?
     accidentalPattern =
       Canonical.keySignatureAccidental accidental
+    -}
 
     pattern =
       Pitch { pitchClass : n.pitchClass, accidental : accidental }

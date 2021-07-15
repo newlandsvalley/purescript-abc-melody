@@ -30,9 +30,9 @@ main = HA.runHalogenAff do
     Right abcTune -> do
       let
         playableAbc = PlayableAbc { abcTune: abcTune, bpm : 120, phraseSize : 0.6, generateIntro : true }
-      io <- runUI (component playableAbc instruments) unit body
+      _ <- runUI (component playableAbc instruments) unit body
       pure unit
-    Left err -> do
+    Left _ -> do
       _  <- liftEffect $ log "ABC failed to load"
       pure unit
   {- if we want to change the Playable recording, we can use this:
