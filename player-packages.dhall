@@ -132,6 +132,7 @@ in  upstream
     , "maybe"
     , "midi"
     , "ordered-collections"
+    , "profunctor-lenses"
     , "rationals"
     , "strings"
     , "stringutils"

@@ -8,19 +8,18 @@ module Data.Abc.Melody
 
 -- | Build a phrased, playable melody directly from a monophonic ABC Score
 
-import Data.Abc.Repeats.Types (RepeatState)
 import Data.Abc.Melody.Types
 
 import Audio.SoundFont.Melody (Melody)
 import Control.Monad.State (State, get, put, execState)
-import Data.Abc (AbcNote, AbcRest, AbcTune, Accidental(..), Bar, BarLine, BodyPart(..), Broken(..), Grace, GraceableNote, Header(..), Mode(..),
-               ModifiedKeySignature, Music(..), MusicLine, NoteDuration, Pitch(..), PitchClass(..), RestOrNote, TempoSignature, TuneBody)
+import Data.Abc (AbcNote, AbcRest, AbcTune, Accidental(..), Bar, BarLine, BodyPart(..), Broken(..), Grace, GraceableNote, Header(..), ModifiedKeySignature, Music(..), MusicLine, NoteDuration, Pitch(..), RestOrNote, TempoSignature, TuneBody)
 import Data.Abc.Accidentals as Accidentals
-import Data.Abc.KeySignature (modifiedKeySet, pitchNumber, notesInChromaticScale)
+import Data.Abc.KeySignature (defaultKey, modifiedKeySet, pitchNumber, notesInChromaticScale)
 import Data.Abc.Melody.Intro (appendIntroSections)
 import Data.Abc.Melody.RepeatBuilder (buildRepeatedMelody)
 import Data.Abc.Melody.RepeatSections (initialRepeatState, indexBar, finalBar)
 import Data.Abc.Metadata (dotFactor, getKeySig)
+import Data.Abc.Repeats.Types (RepeatState)
 import Data.Abc.Tempo (AbcTempo, getAbcTempo, setBpm, beatsPerSecond)
 import Data.Array as Array
 import Data.Bifunctor (bimap)
@@ -51,11 +50,6 @@ defaultPhraseSize =
 defaultBpm :: Int
 defaultBpm =
   120
-
--- | default to C Major (i.e. no accidental modifiers)
-defaultKey :: ModifiedKeySignature
-defaultKey =
-  { keySignature: { pitchClass: C, accidental: Natural, mode: Major }, modifications: Nil }
 
 -- | Transform ABC into a playable melody using default settings for
 -- | BPM (120) and generated phrase size (0.6s)
@@ -269,7 +263,7 @@ transformHeader h =
   case h of
     UnitNoteLength d ->
       updateState addUnitNoteLenToState d
-    Key mks _ ->
+    Key mks  ->
       updateState addKeySigToState mks
     Tempo t ->
       updateState addTempoToState t

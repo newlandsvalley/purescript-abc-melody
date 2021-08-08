@@ -98,7 +98,7 @@ in  upstream
 -------------------------------
 -}
 let upstream =
-      https://github.com/purescript/package-sets/releases/download/psc-0.14.2-20210713/packages.dhall sha256:654c3148cb995f642c73b4508d987d9896e2ad3ea1d325a1e826c034c0d3cd7b
+      https://github.com/purescript/package-sets/releases/download/psc-0.14.3-20210722/packages.dhall sha256:1ceb43aa59436bf5601bac45f6f3781c4e1f0e4c2b8458105b018e5ed8c30f8c
 
 in  upstream
   with abc-parser =
@@ -110,6 +110,7 @@ in  upstream
       , "maybe"
       , "midi"
       , "ordered-collections"
+      , "profunctor-lenses"
       , "rationals"
       , "strings"
       , "stringutils"
@@ -120,21 +121,3 @@ in  upstream
     , repo = "https://github.com/newlandsvalley/purescript-abc-parser.git"
     , version = "ps014"
     }
-
-{-}
-  with soundfonts =
-    { dependencies =
-      [ "affjax"
-      , "argonaut-core"
-      , "b64"
-      , "console"
-      , "effect"
-      , "http-methods"
-      , "midi"
-      , "parallel"
-      , "prelude"
-      ]
-    , repo = "https://github.com/newlandsvalley/purescript-soundfonts.git"
-    , version = "v3.2.0"
-    }
--}
