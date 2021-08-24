@@ -8,6 +8,7 @@ in conf // {
                                      , "halogen"
                                      , "halogen-components"
                                      , "midi"
+                                     , "rhythm-guitar"
                                      , "soundfonts" 
                                      ],
   packages = ./player-packages.dhall

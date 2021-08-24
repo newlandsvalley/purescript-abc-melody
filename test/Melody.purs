@@ -3,7 +3,7 @@ module Melody (melodySuite) where
 import Audio.SoundFont (MidiNote)
 import Audio.SoundFont.Melody (Melody)
 import Control.Monad.Free (Free)
-import Data.Abc.Melody (toMelody)
+import Data.Abc.Melody (PlayableAbc(..), PlayableAbcProperties, toPlayableMelody, defaultPlayableAbcProperties)
 import Data.Abc.Parser (parse)
 import Data.Array (take)
 import Data.Either (Either(..))
@@ -16,10 +16,7 @@ import Test.Samples
 gain :: Number
 gain = 0.5
 
--- | this is a realistic size for individual phrases in the melody
-phraseSize :: Number
-phraseSize = 0.7
-
+-- | The default phrase size is 0.7
 -- | but this is what we'll use for the bulk of the tests - a melody well
 -- | then consist of a single phrase which can be tested more easily
 longPhraseSize :: Number
@@ -30,7 +27,8 @@ assertMelody s expected =
   case (parse s) of
     Right tune ->
       let
-        melody = toMelody tune 120 longPhraseSize false
+        props = (defaultPlayableAbcProperties tune) {phraseSize = longPhraseSize }
+        melody = toPlayableMelody (PlayableAbc props)
       in
         Assert.equal expected melody
 
@@ -42,7 +40,9 @@ assertMelodyAtBpm s bpm expected =
   case (parse s) of
     Right tune ->
       let
-        melody = toMelody tune bpm longPhraseSize false
+        props :: PlayableAbcProperties
+        props = (defaultPlayableAbcProperties tune) { bpm = bpm, phraseSize = longPhraseSize }
+        melody = toPlayableMelody (PlayableAbc props)
       in
         Assert.equal expected melody
 
@@ -54,7 +54,8 @@ assertMelodyShortPhrase s expected =
   case (parse s) of
     Right tune ->
       let
-        melody = toMelody tune 120 phraseSize false
+        props = defaultPlayableAbcProperties tune
+        melody = toPlayableMelody (PlayableAbc props)
       in
         Assert.equal expected melody
 
@@ -67,7 +68,8 @@ assertIntro s expected =
   case (parse s) of
     Right tune ->
       let
-        melody = toMelody tune 120 longPhraseSize true
+        props = (defaultPlayableAbcProperties tune) {generateIntro = true, phraseSize = longPhraseSize }
+        melody = toPlayableMelody (PlayableAbc props)
         intro = take 2 melody
       in
         Assert.equal expected intro

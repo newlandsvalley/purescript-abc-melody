@@ -7,7 +7,7 @@ import Effect.Class (liftEffect)
 import Effect.Console (log)
 import Data.Either (Either(..))
 import Data.Abc.Parser (parse)
-import Data.Abc.PlayableAbc (PlayableAbc(..))
+import Data.Abc.Melody (PlayableAbc(..), defaultPlayableAbcProperties)
 import Data.Midi.Instrument (InstrumentName(..))
 import Halogen as H
 import Halogen.Aff as HA
@@ -29,7 +29,8 @@ main = HA.runHalogenAff do
   case etune of
     Right abcTune -> do
       let
-        playableAbc = PlayableAbc { abcTune: abcTune, bpm : 120, phraseSize : 0.6, generateIntro : true }
+        props = (defaultPlayableAbcProperties abcTune) {phraseSize = 0.6, generateIntro = true }
+        playableAbc = PlayableAbc props
       _ <- runUI (component playableAbc instruments) unit body
       pure unit
     Left _ -> do

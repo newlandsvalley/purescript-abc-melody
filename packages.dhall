@@ -121,3 +121,29 @@ in  upstream
     , repo = "https://github.com/newlandsvalley/purescript-abc-parser.git"
     , version = "ps014"
     }
+  with rhythm-guitar =
+    { dependencies =
+      [ "aff"
+      , "affjax"
+      , "arrays"
+      , "console"
+      , "control"
+      , "debug"
+      , "effect"
+      , "either"
+      , "foreign"
+      , "http-methods"
+      , "maybe"
+      , "ordered-collections"
+      , "prelude"
+      , "psci-support"
+      , "simple-json"
+      , "soundfonts"
+      , "string-parsers"
+      , "strings"
+      , "tuples"
+      ]
+    , repo = "https://github.com/newlandsvalley/RhythmGuitar.git"
+    , version = "main"
+    }
+

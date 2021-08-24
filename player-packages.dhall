@@ -105,8 +105,9 @@ in  upstream
 -------------------------------
 -}
 
-let upstream =
-      https://github.com/purescript/package-sets/releases/download/psc-0.14.2-20210713/packages.dhall sha256:654c3148cb995f642c73b4508d987d9896e2ad3ea1d325a1e826c034c0d3cd7b
+let upstream = 
+  https://github.com/purescript/package-sets/releases/download/psc-0.14.3-20210722/packages.dhall sha256:1ceb43aa59436bf5601bac45f6f3781c4e1f0e4c2b8458105b018e5ed8c30f8c
+
    
 in  upstream
     with halogen-components =
@@ -142,5 +143,30 @@ in  upstream
     ]
     , repo = "https://github.com/newlandsvalley/purescript-abc-parser.git"
     , version = "ps014"
+    }
+  with rhythm-guitar =
+    { dependencies =
+      [ "aff"
+      , "affjax"
+      , "arrays"
+      , "console"
+      , "control"
+      , "debug"
+      , "effect"
+      , "either"
+      , "foreign"
+      , "http-methods"
+      , "maybe"
+      , "ordered-collections"
+      , "prelude"
+      , "psci-support"
+      , "simple-json"
+      , "soundfonts"
+      , "string-parsers"
+      , "strings"
+      , "tuples"
+      ]
+    , repo = "https://github.com/newlandsvalley/RhythmGuitar.git"
+    , version = "main"
     }
     

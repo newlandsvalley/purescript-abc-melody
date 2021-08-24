@@ -15,6 +15,7 @@ You can edit this file as you like.
   , "ordered-collections"
   , "prelude"
   , "rationals"
+  , "rhythm-guitar"
   , "soundfonts"
   , "transformers"
   , "tuples"

@@ -1,8 +1,10 @@
 -- | Conversion of an ABC tune to MIDI.
 module Data.Abc.Melody
   ( MidiPitch
-  , toMelodyDefault
-  , toMelody
+  , PlayableAbc(..)
+  , PlayableAbcProperties
+  , defaultPlayableAbcProperties
+  , toPlayableMelody
   , toMidiPitch
   , midiPitchOffset) where
 
@@ -11,6 +13,7 @@ module Data.Abc.Melody
 import Data.Abc.Melody.Types
 
 import Audio.SoundFont.Melody (Melody)
+import Audio.SoundFont.Melody.Class (class Playable)
 import Control.Monad.State (State, get, put, execState)
 import Data.Abc (AbcNote, AbcRest, AbcTune, Accidental(..), Bar, BarLine, BodyPart(..), Broken(..), Grace, GraceableNote, Header(..), ModifiedKeySignature, Music(..), MusicLine, NoteDuration, Pitch(..), RestOrNote, TempoSignature, TuneBody)
 import Data.Abc.Accidentals as Accidentals
@@ -28,10 +31,35 @@ import Data.Foldable (foldl, oneOf)
 import Data.List (List(..), (:))
 import Data.List.NonEmpty (NonEmptyList)
 import Data.List.NonEmpty (head, length, tail, toList) as Nel
+import Data.Map (empty)
 import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
 import Data.Rational (Rational, fromInt, toNumber, (%))
+import RhythmGuitar.Types (MidiPitchChordMap)
 import Data.Tuple (Tuple(..))
 import Prelude (bind, identity, map, pure, ($), (&&), (*), (+), (-), (/), (<>), (==), (||), (>))
+
+type PlayableAbcProperties = 
+  { abcTune :: AbcTune             -- the tune
+  , bpm :: Int                     -- beats per minute
+  , phraseSize :: Number           -- the max length of a phrase before interruptions allowed
+  , generateIntro :: Boolean       -- generate an intro from the A Part ending
+  , chordMap :: MidiPitchChordMap  -- lookup for chords if we want accompaniment
+  }
+
+newtype PlayableAbc = PlayableAbc PlayableAbcProperties
+
+defaultPlayableAbcProperties :: AbcTune -> PlayableAbcProperties
+defaultPlayableAbcProperties abcTune = 
+  { abcTune
+  , bpm: 120
+  , phraseSize: 0.7
+  , generateIntro: false 
+  , chordMap: empty
+  }
+
+instance playableAbc :: Playable PlayableAbc where
+  toMelody pabc _ = toPlayableMelody pabc
+
 
 -- | The pitch of a note expressed as a MIDI interval.
 type MidiPitch =
@@ -43,22 +71,27 @@ graceFraction :: Rational
 graceFraction =
   (1 % 10)
 
+{-}
 defaultPhraseSize :: Number
 defaultPhraseSize =
   0.7
 
+
 defaultBpm :: Int
 defaultBpm =
   120
+
 
 -- | Transform ABC into a playable melody using default settings for
 -- | BPM (120) and generated phrase size (0.6s)
 toMelodyDefault :: AbcTune -> Melody
 toMelodyDefault tune =
   toMelody tune defaultBpm defaultPhraseSize false
+-}
 
-toMelody :: AbcTune -> Int -> Number -> Boolean -> Melody
-toMelody originalTune bpm phraseSize generateIntro =
+{-}
+toMelodyOld :: AbcTune -> Int -> Number -> Boolean -> Melody
+toMelodyOld originalTune bpm phraseSize generateIntro =
   let
     tune =
       if (defaultBpm == bpm) then
@@ -69,6 +102,17 @@ toMelody originalTune bpm phraseSize generateIntro =
       execState (transformTune tune) (initialState phraseSize tune)
   in
     buildMelody tstate generateIntro
+-}
+
+toPlayableMelody :: PlayableAbc -> Melody
+toPlayableMelody (PlayableAbc pa) =
+  let
+    -- the playable ABC may override the default bpm of the tune
+    tune = setBpm pa.bpm pa.abcTune
+    tstate =
+      execState (transformTune tune) (initialState pa.phraseSize tune)
+  in
+    buildMelody tstate pa.generateIntro    
 
 -- | the state to thread through the computation
 type TState =
