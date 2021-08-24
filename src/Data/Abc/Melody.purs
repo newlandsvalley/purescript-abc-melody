@@ -6,9 +6,11 @@ module Data.Abc.Melody
   , defaultPlayableAbcProperties
   , toPlayableMelody
   , toMidiPitch
-  , midiPitchOffset) where
+  , midiPitchOffset
+  ) where
 
 -- | Build a phrased, playable melody directly from a monophonic ABC Score
+-- | If a chord map is supplied, then also generate guitar chords alongside the melody
 
 import Data.Abc.Melody.Types
 
@@ -38,32 +40,35 @@ import RhythmGuitar.Types (MidiPitchChordMap)
 import Data.Tuple (Tuple(..))
 import Prelude (bind, identity, map, pure, ($), (&&), (*), (+), (-), (/), (<>), (==), (||), (>))
 
-type PlayableAbcProperties = 
-  { abcTune :: AbcTune             -- the tune
-  , bpm :: Int                     -- beats per minute
-  , phraseSize :: Number           -- the max length of a phrase before interruptions allowed
-  , generateIntro :: Boolean       -- generate an intro from the A Part ending
-  , chordMap :: MidiPitchChordMap  -- lookup for chords if we want accompaniment
+-- | Properties of an ABC tune that determine how it shall be played
+type PlayableAbcProperties =
+  { tune :: AbcTune -- the tune
+  , bpmOverride :: Maybe Int -- override the bpm (beats per minute) in the ABC tune
+  , phraseSize :: Number -- the max length of a phrase before interruptions allowed
+  , generateIntro :: Boolean -- generate an intro from the A Part ending
+  , chordMap :: MidiPitchChordMap -- lookup for chords if we want accompaniment
   }
 
 newtype PlayableAbc = PlayableAbc PlayableAbcProperties
 
-defaultPlayableAbcProperties :: AbcTune -> PlayableAbcProperties
-defaultPlayableAbcProperties abcTune = 
-  { abcTune
-  , bpm: 120
+-- | Default player properties.  You must override tune.  Otherwise the tune plays 
+-- | with a sensible phrase size at the pace determined by the ABC itself and
+-- | does not emit an intro or any accompanying chords. 
+defaultPlayableAbcProperties :: PlayableAbcProperties
+defaultPlayableAbcProperties =
+  { tune: { headers: Nil, body: Nil }
+  , bpmOverride: Nothing
   , phraseSize: 0.7
-  , generateIntro: false 
+  , generateIntro: false
   , chordMap: empty
   }
 
 instance playableAbc :: Playable PlayableAbc where
   toMelody pabc _ = toPlayableMelody pabc
 
-
 -- | The pitch of a note expressed as a MIDI interval.
 type MidiPitch =
-    Int
+  Int
 
 -- | the fraction  of the duration of a note that is 'stolen' by any
 -- | preceding grace note that it has
@@ -71,67 +76,37 @@ graceFraction :: Rational
 graceFraction =
   (1 % 10)
 
-{-}
-defaultPhraseSize :: Number
-defaultPhraseSize =
-  0.7
-
-
-defaultBpm :: Int
-defaultBpm =
-  120
-
-
--- | Transform ABC into a playable melody using default settings for
--- | BPM (120) and generated phrase size (0.6s)
-toMelodyDefault :: AbcTune -> Melody
-toMelodyDefault tune =
-  toMelody tune defaultBpm defaultPhraseSize false
--}
-
-{-}
-toMelodyOld :: AbcTune -> Int -> Number -> Boolean -> Melody
-toMelodyOld originalTune bpm phraseSize generateIntro =
-  let
-    tune =
-      if (defaultBpm == bpm) then
-        originalTune
-      else
-        setBpm bpm originalTune
-    tstate =
-      execState (transformTune tune) (initialState phraseSize tune)
-  in
-    buildMelody tstate generateIntro
--}
-
+-- | Convert the ABC tune to a melody that is playable in a soundfonts player widget
 toPlayableMelody :: PlayableAbc -> Melody
 toPlayableMelody (PlayableAbc pa) =
   let
     -- the playable ABC may override the default bpm of the tune
-    tune = setBpm pa.bpm pa.abcTune
+    tune = maybe pa.tune (\bpm -> setBpm bpm pa.tune) pa.bpmOverride
+    -- tune = setBpm pa.bpm pa.tune
     tstate =
-      execState (transformTune tune) (initialState pa.phraseSize tune)
+      execState (transformTune tune) (initialState pa tune)
   in
-    buildMelody tstate pa.generateIntro    
+    buildMelody tstate pa.generateIntro
 
 -- | the state to thread through the computation
 type TState =
-    { modifiedKeySignature ::  ModifiedKeySignature    -- the current key signature
-    , abcTempo ::  AbcTempo                            -- the current tempo
-    , phraseSize :: Number                             -- max size of a MIDI phrase
-    , currentBar :: MidiBar                            -- the current bar being translated
-    , currentBarAccidentals :: Accidentals.Accidentals -- can't put this in MidiBar because of typeclass constraints
-                                                       -- any notes marked explicitly as accidentals in the current bar
-    , currentOffset :: Number                          -- the time offset of the current note
-    , lastNoteTied :: Maybe GraceableNote              -- the last note, if it was tied?
-    , repeatState :: RepeatState                       -- the repeat state of the tune
-    , rawMelody :: List MidiBar                        -- the growing list of completed bars
-    }
+  { modifiedKeySignature :: ModifiedKeySignature -- the current key signature
+  , abcTempo :: AbcTempo -- the current tempo
+  , phraseSize :: Number -- max size of a MIDI phrase
+  , chordMap :: MidiPitchChordMap -- map of chord symbol to note pitches
+  , currentBar :: MidiBar -- the current bar being translated
+  , currentBarAccidentals :: Accidentals.Accidentals -- can't put this in MidiBar because of typeclass constraints
+  -- any notes marked explicitly as accidentals in the current bar
+  , currentOffset :: Number -- the time offset of the current note
+  , lastNoteTied :: Maybe GraceableNote -- the last note, if it was tied?
+  , repeatState :: RepeatState -- the repeat state of the tune
+  , rawMelody :: List MidiBar -- the growing list of completed bars
+  }
 
 -- | Take the completed tune which exists in tstats largely as a flat
 -- | sequence of  midi bars and build a phrased meldody taking account
 -- | od all repeated sections and so on.
-buildMelody:: TState -> Boolean -> Melody
+buildMelody :: TState -> Boolean -> Melody
 buildMelody tstate generateIntro =
   let
     currentBar = tstate.currentBar
@@ -150,13 +125,12 @@ buildMelody tstate generateIntro =
                      , repeatState = repeatState }
     -}
     rawMelody = currentBar : tstate.rawMelody
-    -- foo1 = spy "final repeat sections"  finalRepeatState
-    -- foo2 = spy "repeat sections after intro"  tstate'.repeatState.sections
-    -- bad = spy "raw melody" tstate'.rawMelody
-    -- bar = spy "intro bars"  tstate'.repeatState.intro
+  -- foo1 = spy "final repeat sections"  finalRepeatState
+  -- foo2 = spy "repeat sections after intro"  tstate'.repeatState.sections
+  -- bad = spy "raw melody" tstate'.rawMelody
+  -- bar = spy "intro bars"  tstate'.repeatState.intro
   in
     buildRepeatedMelody rawMelody repeatState.sections tstate.phraseSize
-
 
 -- | although nominally the returned value held in the State monad is
 -- | MidiBars, we don't use it.  Rather we constructb the final value
@@ -266,9 +240,10 @@ addBarToState tstate barLine =
       -- reset the currentOffset for the next note if we're starting a new section
       currentOffset =
         -- reset the current note offset if there's any kind of repeat or alternate ending marker
-        if barLine.startRepeats > 0 
-           || barLine.endRepeats > 0 
-           ||isJust barLine.iteration then
+        if
+          barLine.startRepeats > 0
+            || barLine.endRepeats > 0
+            || isJust barLine.iteration then
           0.0
         else
           tstate.currentOffset
@@ -277,12 +252,13 @@ addBarToState tstate barLine =
         -- the current bar is not empty so we aggregate the new bar into the track
         currentBar : tstate.rawMelody
     in
-      tstate { currentBar = buildNewBar (currentBar.number + 1) barLine
-             , currentBarAccidentals = Accidentals.empty
-             , currentOffset = currentOffset
-             , repeatState = repeatState
-             , rawMelody = rawMelody
-             }
+      tstate
+        { currentBar = buildNewBar (currentBar.number + 1) barLine
+        , currentBarAccidentals = Accidentals.empty
+        , currentOffset = currentOffset
+        , repeatState = repeatState
+        , rawMelody = rawMelody
+        }
 
 -- | coalesce the new bar from ABC with the current one held in the state
 -- | (which has previously been tested for emptiness)
@@ -291,10 +267,11 @@ coalesceBar tstate barLine =
   let
     endRepeats = tstate.currentBar.endRepeats + barLine.endRepeats
     startRepeats = tstate.currentBar.startRepeats + barLine.startRepeats
-    bar' = tstate.currentBar { endRepeats = endRepeats
-                             , startRepeats = startRepeats
-                             , iteration = barLine.iteration 
-                             }
+    bar' = tstate.currentBar
+      { endRepeats = endRepeats
+      , startRepeats = startRepeats
+      , iteration = barLine.iteration
+      }
   in
     tstate { currentBar = bar' }
 
@@ -307,7 +284,7 @@ transformHeader h =
   case h of
     UnitNoteLength d ->
       updateState addUnitNoteLenToState d
-    Key mks  ->
+    Key mks ->
       updateState addKeySigToState mks
     Tempo t ->
       updateState addTempoToState t
@@ -315,18 +292,19 @@ transformHeader h =
       do
         pure Nil
 
-addGraceableNoteToState :: Rational -> TState-> GraceableNote -> TState
+addGraceableNoteToState :: Rational -> TState -> GraceableNote -> TState
 addGraceableNoteToState tempoModifier tstate graceableNote =
   let
     abcNote = graceableNote.abcNote
     Tuple notes newTie =
-        processNoteWithTie tempoModifier tstate graceableNote
+      processNoteWithTie tempoModifier tstate graceableNote
     barAccidentals =
       addNoteToBarAccidentals abcNote tstate.currentBarAccidentals
-    tstate' = tstate { currentBar = tstate.currentBar { iPhrase = notes }
-                     , lastNoteTied = newTie
-                     , currentBarAccidentals = barAccidentals
-                     }
+    tstate' = tstate
+      { currentBar = tstate.currentBar { iPhrase = notes }
+      , lastNoteTied = newTie
+      , currentBarAccidentals = barAccidentals
+      }
     -- if the last note was tied, we need its duration to be able to pace the next note
     lastTiedNoteDuration = maybe (0 % 1) _.abcNote.duration tstate.lastNoteTied
   in
@@ -340,18 +318,18 @@ addGraceableNoteToState tempoModifier tstate graceableNote =
 -- | properly in each sub phrase
 -- | It is made possible by the latest master of purescript-soundfonts which
 -- | now considers such a note to indicate a rest
-addRestToState :: Rational -> TState-> AbcRest -> TState
+addRestToState :: Rational -> TState -> AbcRest -> TState
 addRestToState tempoModifier tstate rest =
   let
     note = emitRest tempoModifier tstate rest
     notes = Array.cons note tstate.currentBar.iPhrase
     currentBar = tstate.currentBar { iPhrase = notes }
-    tstate' = tstate {currentBar = currentBar}
+    tstate' = tstate { currentBar = currentBar }
   in
     incrementTimeOffset tstate' (rest.duration * tempoModifier)
 
 -- | tuplets can now contain rests
-addRestOrNoteToState :: Rational -> TState-> RestOrNote -> TState
+addRestOrNoteToState :: Rational -> TState -> RestOrNote -> TState
 addRestOrNoteToState tempoModifier tstate restOrNote =
   case restOrNote of
     Left r ->
@@ -396,7 +374,7 @@ processNoteWithTie tempoModifier tstate graceableNote =
             phraseFaultyTie = emitGracesAndNote tempoModifier tstate lastNote
             -- prepare the phrase for this note if we need it, taking account
             -- of the increased time offset from the faulty grace we've just emitted
-            tstate' = incrementTimeOffset tstate  graceableNote.abcNote.duration
+            tstate' = incrementTimeOffset tstate graceableNote.abcNote.duration
             phrase = emitGracesAndNote tempoModifier tstate' graceableNote
           in
             if graceableNote.abcNote.tied then
@@ -448,7 +426,7 @@ emitGracesAndNote tempoModifier tstate graceableNote =
   in
     Array.cons mainNote graceNotesPhrase
 
-addChordalNoteToState :: Rational -> Boolean -> TState-> AbcNote -> TState
+addChordalNoteToState :: Rational -> Boolean -> TState -> AbcNote -> TState
 addChordalNoteToState tempoModifier canPhrase tstate abcNote =
   let
     notes =
@@ -456,12 +434,13 @@ addChordalNoteToState tempoModifier canPhrase tstate abcNote =
     barAccidentals =
       addNoteToBarAccidentals abcNote tstate.currentBarAccidentals
   in
-    tstate { currentBar = tstate.currentBar { iPhrase = notes }
-           , currentBarAccidentals = barAccidentals
-           }
+    tstate
+      { currentBar = tstate.currentBar { iPhrase = notes }
+      , currentBarAccidentals = barAccidentals
+      }
 
 -- | Add notes from a chord to state
-addChordalNotesToState :: Rational -> TState-> NonEmptyList AbcNote -> TState
+addChordalNotesToState :: Rational -> TState -> NonEmptyList AbcNote -> TState
 addChordalNotesToState tempoModifier tstate abcNotes =
   let
     -- process the first note in the chord separately because qe can break phrase here
@@ -473,7 +452,7 @@ addChordalNotesToState tempoModifier tstate abcNotes =
 -- | process the incoming  note that is part of a chord.
 -- | Here, ties and grace notes preceding the note
 -- | are not supported
-processChordalNote ::  Rational -> TState -> AbcNote -> Boolean -> IPhrase
+processChordalNote :: Rational -> TState -> AbcNote -> Boolean -> IPhrase
 processChordalNote tempoModifier tstate abcNote canPhrase =
   let
     -- we#re not allowed a phrase boundary at a chordal note
@@ -497,7 +476,7 @@ emitNote tempoModifier tstate abcNote canPhrase =
   emitNotePlus tempoModifier tstate abcNote 0.0 canPhrase
 
 -- | emit the note as before, but with an additional offset
-emitNotePlus :: Rational -> TState -> AbcNote -> Number -> Boolean ->  INote
+emitNotePlus :: Rational -> TState -> AbcNote -> Number -> Boolean -> INote
 emitNotePlus tempoModifier tstate abcNote extraOffset canPhrase =
   let
     pitch =
@@ -527,7 +506,7 @@ emitGraceNotes tempoModifier tstate abcNotes =
     f :: Array INote -> AbcNote -> Array INote
     f acc note =
       -- we choose not to allow phrase boundaries at grace notes
-      [emitNotePlus tempoModifier tstate note (lastDuration acc) false] <> acc
+      [ emitNotePlus tempoModifier tstate note (lastDuration acc) false ] <> acc
   in
     foldl f [] abcNotes
 
@@ -547,7 +526,7 @@ lastDuration notes =
 -- | plus a list of either rests or notes.
 -- | tempo modifier is the modification of the tempo indicate donly by the
 -- | tuplet signature (e.g. 3 notes in the time of two)
-addTupletContentsToState :: Maybe Grace -> Rational -> TState-> NonEmptyList RestOrNote -> TState
+addTupletContentsToState :: Maybe Grace -> Rational -> TState -> NonEmptyList RestOrNote -> TState
 addTupletContentsToState mGrace tempoModifier tstate restsOrNotes =
   let
     -- move the grace notes from external to internal
@@ -564,27 +543,28 @@ incrementTimeOffset tstate duration =
     tstate { currentOffset = offset }
 
 -- | cater for a change in key signature
-addKeySigToState :: TState-> ModifiedKeySignature -> TState
+addKeySigToState :: TState -> ModifiedKeySignature -> TState
 addKeySigToState tstate mks =
   tstate { modifiedKeySignature = mks }
 
 -- | cater for a change in unit note length
-addUnitNoteLenToState :: TState-> Rational -> TState
+addUnitNoteLenToState :: TState -> Rational -> TState
 addUnitNoteLenToState tstate d =
   let
-    abcTempo' = tstate.abcTempo { unitNoteLength = d}
+    abcTempo' = tstate.abcTempo { unitNoteLength = d }
   in
     tstate { abcTempo = abcTempo' }
 
 -- | cater for a change in unit note length
 -- | this not only changes state but adds a change tempo message
-addTempoToState :: TState-> TempoSignature -> TState
+addTempoToState :: TState -> TempoSignature -> TState
 addTempoToState tstate tempoSig =
   let
     abcTempo' =
-      tstate.abcTempo { tempoNoteLength = foldl (+) (fromInt 0) tempoSig.noteLengths
-                      , bpm = tempoSig.bpm
-                      }
+      tstate.abcTempo
+        { tempoNoteLength = foldl (+) (fromInt 0) tempoSig.noteLengths
+        , bpm = tempoSig.bpm
+        }
   in
     tstate { abcTempo = abcTempo' }
 
@@ -603,11 +583,11 @@ addNoteToBarAccidentals abcNote accs =
 -- | Generate an intermediate MIDI note destieed for the Melody buffer
 iNote :: Number -> Number -> Int -> Boolean -> INote
 iNote offset duration pitch canPhrase =
-  { channel : 0              -- the MIDI channel
-  , id  : pitch              -- the MIDI pitch number
-  , timeOffset : offset      -- the time delay in seconds before the note is played
-  , duration : duration      -- the duration of the note
-  , canPhrase  : canPhrase   -- can we form a new phrase at this note?
+  { channel: 0 -- the MIDI channel
+  , id: pitch -- the MIDI pitch number
+  , timeOffset: offset -- the time delay in seconds before the note is played
+  , duration: duration -- the duration of the note
+  , canPhrase: canPhrase -- can we form a new phrase at this note?
   }
 
 -- | work out the broken rhythm tempo
@@ -621,12 +601,12 @@ brokenTempo i isUp =
 -- | does the MIDI bar hold no notes (or any other MIDI messages)
 isBarEmpty :: MidiBar -> Boolean
 isBarEmpty mb =
-    Array.null mb.iPhrase
+  Array.null mb.iPhrase
 
 -- | generic function to update the State
 -- | a is an ABC value
 -- | f is a function that transforms the ABC value and adds it to the state
-updateState :: forall a. (TState -> a -> TState ) -> a -> State TState MidiBars
+updateState :: forall a. (TState -> a -> TState) -> a -> State TState MidiBars
 updateState f abc =
   do
     tstate <- get
@@ -666,8 +646,8 @@ gracifyFirstNote maybeGrace restsOrNotes =
     f :: RestOrNote -> RestOrNote
     f =
       bimap identity (\gn -> gn { maybeGrace = maybeGrace })
-    in
-      Cons (f hd) tl
+  in
+    Cons (f hd) tl
 
 noteDuration :: AbcTempo -> Rational -> Number
 noteDuration abcTempo noteLength =
@@ -681,10 +661,11 @@ noteDuration abcTempo noteLength =
 -- | the notes must have the same pitch and the following note my not be graced
 legitimateTie :: TState -> GraceableNote -> GraceableNote -> Boolean
 legitimateTie tstate tiedNote nextNote =
-  (midiPitchOffset tiedNote.abcNote tstate.modifiedKeySignature tstate.currentBarAccidentals ==
-    midiPitchOffset nextNote.abcNote tstate.modifiedKeySignature tstate.currentBarAccidentals)
+  ( midiPitchOffset tiedNote.abcNote tstate.modifiedKeySignature tstate.currentBarAccidentals ==
+      midiPitchOffset nextNote.abcNote tstate.modifiedKeySignature tstate.currentBarAccidentals
+  )
     &&
-    isNothing nextNote.maybeGrace
+      isNothing nextNote.maybeGrace
 
 -- | Convert an ABC note pitch to a MIDI pitch.
 -- |
@@ -711,8 +692,8 @@ midiPitchOffset n mks barAccidentals =
     accidental =
       case n.accidental of
         Implicit ->
-          fromMaybe Natural $ oneOf ( inBarAccidental: inKeyAccidental: Nil )
-        _ ->  -- explict
+          fromMaybe Natural $ oneOf (inBarAccidental : inKeyAccidental : Nil)
+        _ -> -- explict
           n.accidental
 
     -- the lookup pattern just uses sharps or flats (if there) or the empty String if not
@@ -722,46 +703,46 @@ midiPitchOffset n mks barAccidentals =
     -}
 
     pattern =
-      Pitch { pitchClass : n.pitchClass, accidental : accidental }
+      Pitch { pitchClass: n.pitchClass, accidental: accidental }
   in
     pitchNumber pattern
-
 
 -- | The very first bar has a default tempo as the only message
 initialBar :: MidiBar
 initialBar =
-  { number : 0
-  , endRepeats : 0
-  , startRepeats : 0
-  , iteration : Nothing
-  , iPhrase : []
+  { number: 0
+  , endRepeats: 0
+  , startRepeats: 0
+  , iteration: Nothing
+  , iPhrase: []
   }
 
 -- | build a new bar from a bar number and an ABC bar
 buildNewBar :: Int -> BarLine -> MidiBar
 buildNewBar i barLine =
-  {  number : i
-  ,  endRepeats : barLine.endRepeats
-  ,  startRepeats : barLine.startRepeats
-  ,  iteration : barLine.iteration
-  ,  iPhrase : []
+  { number: i
+  , endRepeats: barLine.endRepeats
+  , startRepeats: barLine.startRepeats
+  , iteration: barLine.iteration
+  , iPhrase: []
   }
 
 -- | this initial state is then threaded through the computation
 -- | but will be altered when ABC headers are encountered
-initialState :: Number -> AbcTune -> TState
-initialState phraseSize tune =
+initialState :: PlayableAbcProperties -> AbcTune -> TState
+initialState props tune =
   let
     abcTempo = getAbcTempo tune
     keySignature = fromMaybe defaultKey (getKeySig tune)
   in
     { modifiedKeySignature: keySignature
-      , abcTempo : abcTempo
-      , phraseSize : phraseSize
-      , currentBar : initialBar
-      , currentBarAccidentals : Accidentals.empty
-      , currentOffset : 0.0
-      , lastNoteTied : Nothing
-      , repeatState : initialRepeatState
-      , rawMelody : Nil
-      }
+    , abcTempo: abcTempo
+    , phraseSize: props.phraseSize
+    , chordMap: props.chordMap
+    , currentBar: initialBar
+    , currentBarAccidentals: Accidentals.empty
+    , currentOffset: 0.0
+    , lastNoteTied: Nothing
+    , repeatState: initialRepeatState
+    , rawMelody: Nil
+    }

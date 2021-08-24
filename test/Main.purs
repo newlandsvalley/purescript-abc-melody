@@ -6,7 +6,7 @@ import Test.Unit (suite)
 import Test.Unit.Main (runTest)
 import Melody (melodySuite)
 
-main :: Effect  Unit
+main :: Effect Unit
 main = runTest do
   suite "melody" do
     melodySuite

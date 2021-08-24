@@ -8,10 +8,10 @@
 -- | We can't reuse the Midi.RepeatSections module from abc-parser 
 -- | because we need to deal with intros which is ignored in the MIDI implementation
 module Data.Abc.Melody.RepeatSections
-        ( initialRepeatState
-        , indexBar
-        , finalBar
-        ) where
+  ( initialRepeatState
+  , indexBar
+  , finalBar
+  ) where
 
 import Data.Abc.Repeats.Types (BarNo, Label(..), RepeatState, Section(..), Sections)
 import Data.List (List(..), last, length, (:))
@@ -19,60 +19,76 @@ import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Newtype (unwrap)
 import Data.List.NonEmpty (NonEmptyList)
 import Data.Abc (Volta)
-import Data.Abc.Repeats.Section (hasFirstEnding, isDeadSection, isUnrepeated, newSection, 
-         nullSection, setEndPos, setMissingRepeatCount, toOffsetZero)
+import Data.Abc.Repeats.Section
+  ( hasFirstEnding
+  , isDeadSection
+  , isUnrepeated
+  , newSection
+  , nullSection
+  , setEndPos
+  , setMissingRepeatCount
+  , toOffsetZero
+  )
 import Data.Abc.Melody.Intro (identifyIntro)
 import Prelude (map, not, (&&), (==), (<=), (>), ($))
 import Data.Abc.Repeats.Variant (addVariants, normaliseVoltas)
 
 -- | support extensible records for different possible melody forms in the rest
-type IndexedBar rest = 
-    { number :: BarNo
-    , endRepeats :: Int
-    , startRepeats :: Int
-    , iteration :: Maybe  (NonEmptyList Volta)  | rest }    
+type IndexedBar rest =
+  { number :: BarNo
+  , endRepeats :: Int
+  , startRepeats :: Int
+  , iteration :: Maybe (NonEmptyList Volta)
+  | rest
+  }
 
 -- | initial repeats i.e. no repeats yet
 initialRepeatState :: RepeatState
 initialRepeatState =
-  { current : nullSection
-  , sections : Nil
-  , intro : []
+  { current: nullSection
+  , sections: Nil
+  , intro: []
   }
 
 -- | index a bar by identifying any repeat markings and saving the marking against 
 -- | the bar number
-indexBar :: forall melody. IndexedBar melody
-         -> RepeatState 
-         -> RepeatState
+indexBar
+  :: forall melody
+   . IndexedBar melody
+  -> RepeatState
+  -> RepeatState
 indexBar bar r =
   case bar.iteration, bar.endRepeats, bar.startRepeats of
 
-    Just voltas, _ , _ ->  
-      let 
+    Just voltas, _, _ ->
+      let
         vsList = map toOffsetZero $ normaliseVoltas voltas
-        {- _ = spy "normalised volta numbers" vsList -}
+      {- _ = spy "normalised volta numbers" vsList -}
       in
-        r { current = addVariants vsList bar.number r.current}   
+        r { current = addVariants vsList bar.number r.current }
 
     -- |: or :| or |
-    Nothing,  ends,  starts ->    
+    Nothing,
+    ends,
+    starts ->
       if (ends > 0 && starts > 0) then
         endAndStartSection bar.number true starts r
       else if (ends > 0 && starts <= 0) then
         endSection bar.number true r
       else if (ends <= 0 && starts > 0) then
         startSection bar.number starts r
-      else 
+      else
         r
 
 -- | accumulate any residual current state from the final bar in the tune 
-finalBar :: forall melody. IndexedBar melody
-         -> RepeatState 
-         -> RepeatState
+finalBar
+  :: forall melody
+   . IndexedBar melody
+  -> RepeatState
+  -> RepeatState
 finalBar bar r =
   let
-    isRepeatEnd = bar.endRepeats > 0 
+    isRepeatEnd = bar.endRepeats > 0
     repeatState = endSection bar.number isRepeatEnd r
   in
     if not (isDeadSection r.current) then
@@ -97,7 +113,7 @@ endSection pos isRepeatEnd r =
     in
       r { current = current }
   else
-     endAndStartSection pos isRepeatEnd 0 r
+    endAndStartSection pos isRepeatEnd 0 r
 
 -- end the current section, accumulate it and start a new section
 endAndStartSection :: BarNo -> Boolean -> Int -> RepeatState -> RepeatState
@@ -107,10 +123,11 @@ endAndStartSection endPos isRepeatEnd repeatStartCount r =
     -- of the End Repeat marker with no such explicit marker at the start of the section - it is implied as the tune start
     current :: Section
     current =
-      if isRepeatEnd 
-         && (unwrap r.current).start == Just 0 
-         && (isUnrepeated r.current)  then
-          setMissingRepeatCount r.current
+      if
+        isRepeatEnd
+          && (unwrap r.current).start == Just 0
+          && (isUnrepeated r.current) then
+        setMissingRepeatCount r.current
       else
         r.current
     -- now set the end position from the bar number position
@@ -135,14 +152,16 @@ accumulateSection pos repeatStartCount r =
         let
           intro = identifyIntro existingCurrent
         in
-          r { sections = existingCurrent : r.sections
+          r
+            { sections = existingCurrent : r.sections
             , current = newCurrent
             , intro = intro
             }
-        else
-          r { sections = existingCurrent : r.sections
-            , current = newCurrent
-            }
+      else
+        r
+          { sections = existingCurrent : r.sections
+          , current = newCurrent
+          }
     else
       r { current = newCurrent }
 
@@ -176,8 +195,7 @@ labelCurrentSection rs =
         Section current { label = APart }
       else
         Section current
-  else
-    if (length rs.sections == 0) then
+    else if (length rs.sections == 0) then
       if (isLeadIn rs.current) then --
         Section current { label = LeadIn }
       else

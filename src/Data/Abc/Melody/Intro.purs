@@ -1,6 +1,7 @@
 module Data.Abc.Melody.Intro
   ( identifyIntro
-  , appendIntroSections) where
+  , appendIntroSections
+  ) where
 
 -- | Generate a 2-bar Intro by analysimg the A Part within the sections
 -- | and using (where possible) the final bars if the A Part.  These will live
@@ -41,15 +42,15 @@ identifyIntro (Section section) =
               -- ending comes immediately before it.  If it's a 2-bar ending, we use
               -- these previous 2 bars.  If it's a 1-bar ending we use it and the final
               -- bar of the tune proper.  In either case we just need the last 2 bars.
-              [se - 1, se - 2]
+              [ se - 1, se - 2 ]
             _ ->
               -- there is no alternative ending - either unrepeated or a simple repeat
               -- whic is treated identially by identifying the last 2 bars
               let
                 end = fromMaybe 0 section.end
               in
-                [end - 1, end -2]
-                --  [end - 2, end -1]
+                [ end - 1, end - 2 ]
+        --  [end - 2, end -1]
         _ ->
           []
   in
@@ -64,11 +65,11 @@ makeIntroSections :: Array Int -> Sections
 makeIntroSections introBars =
   let
     makeSection start = Section
-      { start : Just start
-      , variantPositions : empty
-      , end : Just (start + 1)
-      , repeatCount : 0
-      , label : Intro
+      { start: Just start
+      , variantPositions: empty
+      , end: Just (start + 1)
+      , repeatCount: 0
+      , label: Intro
       }
   in
     toUnfoldable $ map makeSection introBars

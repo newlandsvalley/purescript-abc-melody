@@ -1,6 +1,6 @@
 module Data.Abc.Melody.RepeatBuilder
-  (buildRepeatedMelody) where
-
+  ( buildRepeatedMelody
+  ) where
 
 -- | This module takes a flat list of MidiBars, analyses it to find the repeated
 -- | section indicators, introductions and so on and then builds the completed
@@ -24,35 +24,35 @@ import Prelude (map, not, ($), (&&), (<), (<>), (>=), (+), (-), (>))
 buildRepeatedMelody :: List MidiBar -> Sections -> Number -> Melody
 buildRepeatedMelody mbs sections phraseSize =
   if (null sections) then
-    [[]]
+    [ [] ]
   else
     -- the sections are in reverse order and so we build backwards here!
     Array.filter (not Array.null) $ foldl (repeatedSection mbs phraseSize) [] sections
 
 -- | build a repeat section
 -- | this function is intended for use within foldl
-repeatedSection ::  MidiBars -> Number -> Melody -> Section -> Melody
-repeatedSection mbs phraseSize acc section = 
-  if (variantCount section > 1) then 
+repeatedSection :: MidiBars -> Number -> Melody -> Section -> Melody
+repeatedSection mbs phraseSize acc section =
+  if (variantCount section > 1) then
     (variantSlices mbs phraseSize section) <> acc
-  else 
-    simpleRepeatedSection mbs phraseSize acc section    
+  else
+    simpleRepeatedSection mbs phraseSize acc section
 
 -- | simple repeated sections with no variants
-simpleRepeatedSection ::  MidiBars -> Number -> Melody -> Section -> Melody
+simpleRepeatedSection :: MidiBars -> Number -> Melody -> Section -> Melody
 -- an intro
 simpleRepeatedSection mbs phraseSize acc (Section { start: Just a, end: Just d, label: Intro }) =
   (normalisedIntroSlice a d mbs phraseSize) <> acc
 -- an unrepeated section
 -- we could represent this with the next, but I think it's clearer having them separate
-simpleRepeatedSection mbs phraseSize  acc (Section { start: Just a, end: Just d, repeatCount : 0 }) =
+simpleRepeatedSection mbs phraseSize acc (Section { start: Just a, end: Just d, repeatCount: 0 }) =
   (trackSlice a d mbs phraseSize) <> acc
 -- a repeated section
-simpleRepeatedSection mbs phraseSize acc (Section { start: Just a,  end: Just d, repeatCount : n }) =
-  let 
+simpleRepeatedSection mbs phraseSize acc (Section { start: Just a, end: Just d, repeatCount: n }) =
+  let
     slice = trackSlice a d mbs phraseSize
-    slices = Array.replicate (n+1) slice
-  in 
+    slices = Array.replicate (n + 1) slice
+  in
     (Array.concat slices) <> acc
 -- something else (unexpected)
 simpleRepeatedSection _ _ acc _ =
@@ -60,22 +60,22 @@ simpleRepeatedSection _ _ acc _ =
 
 variantSlices :: MidiBars -> Number -> Section -> Melody
 variantSlices mbs phraseSize section =
-  case section of 
-    Section { start: Just start, end: Just end } ->       
+  case section of
+    Section { start: Just start, end: Just end } ->
       accumulateSlices mbs start end phraseSize section
-    _ -> 
-      []  
+    _ ->
+      []
 
 -- accumulate all the slices for the variant endings
-accumulateSlices :: MidiBars -> BarNo -> BarNo -> Number -> Section ->  Melody 
-accumulateSlices mbs start end phraseSize section  = 
-  let 
+accumulateSlices :: MidiBars -> BarNo -> BarNo -> Number -> Section -> Melody
+accumulateSlices mbs start end phraseSize section =
+  let
     sectionBars :: MidiBars
     sectionBars = filter (barSelector start end) mbs
     slices = map
-              (variantSlice start end phraseSize section sectionBars)
-              (activeVariants section)
-  in 
+      (variantSlice start end phraseSize section sectionBars)
+      (activeVariants section)
+  in
     Array.concat slices
 
 -- build a variant slice for the variant denoted by index and pos
@@ -83,8 +83,8 @@ accumulateSlices mbs start end phraseSize section  =
 -- index is the current index into the array of varianty endings 
 -- pos is the value at the current index
 -- we need to use indexed methods because we need to look up the next index position
-variantSlice :: BarNo -> BarNo -> Number -> Section -> MidiBars -> Tuple Int BarNo -> Melody 
-variantSlice start end phraseSize section sectionBars (Tuple index pos) = 
+variantSlice :: BarNo -> BarNo -> Number -> Section -> MidiBars -> Tuple Int BarNo -> Melody
+variantSlice start end phraseSize section sectionBars (Tuple index pos) =
   let
     -- the first slice is the main tune section which is always from the 
     -- start to the first volta 
@@ -121,16 +121,16 @@ variantSlice start end phraseSize section sectionBars (Tuple index pos) =
 
     -- find the end bar number position of the repeat at this index
     nextEnding = findEndingPosition (unwrap section).variantPositions index end
-    {-     
-    _ = spy "index" index
-    _ = spy "variant count" (variantCount section)
-    _ = spy "max variants" (variantIndexMax section)
-    _ = spy "veryfirstEnding" firstEnding
-    _ = spy "thisEnding" thisEnding
-    _ = spy "nextEnding" nextEnding
-    -}
+  {-     
+  _ = spy "index" index
+  _ = spy "variant count" (variantCount section)
+  _ = spy "max variants" (variantIndexMax section)
+  _ = spy "veryfirstEnding" firstEnding
+  _ = spy "thisEnding" thisEnding
+  _ = spy "nextEnding" nextEnding
+  -}
   in
-    trackSlice start firstEnding sectionBars phraseSize 
+    trackSlice start firstEnding sectionBars phraseSize
       <> trackSlice thisEnding nextEnding sectionBars phraseSize
 
 -- | select a subset of MIDI bars
@@ -140,14 +140,14 @@ barSelector strt fin mb =
 
 -- | build the notes from a subsection of the track
 trackSlice :: BarNo -> BarNo -> MidiBars -> Number -> Melody
-trackSlice start finish mbs phraseSize  =
+trackSlice start finish mbs phraseSize =
   accumulateMessages phraseSize $ filter (barSelector start finish) mbs
 
 -- | accumulate the MIDI messages from the List of bars
 accumulateMessages :: Number -> MidiBars -> Melody
-accumulateMessages phraseSize mbs  =
+accumulateMessages phraseSize mbs =
   let
-    phrases =  toUnfoldable $ map _.iPhrase mbs
+    phrases = toUnfoldable $ map _.iPhrase mbs
   in
     rephraseSection phraseSize $ Array.reverse $ Array.concat phrases
 
@@ -160,9 +160,9 @@ normalisedIntroSlice start finish mbs phraseSize =
 -- | accumulate the messages but normalise the notes relative to a new
 -- | first note offset of 0.
 accumulateAndNormaliseMessages :: Number -> MidiBars -> Melody
-accumulateAndNormaliseMessages phraseSize mbs  =
+accumulateAndNormaliseMessages phraseSize mbs =
   let
-    phrases =  toUnfoldable $ map _.iPhrase mbs
+    phrases = toUnfoldable $ map _.iPhrase mbs
   in
     rephraseSection phraseSize $ normalisePhrase $ Array.reverse $ Array.concat phrases
 
