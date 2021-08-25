@@ -12,6 +12,7 @@ type INote =
   , id :: Int -- the MIDI pitch number
   , timeOffset :: Number -- the time delay in seconds before the note is played
   , duration :: Number -- the duration of the note
+  , gain :: Number -- the volume of the note 
   , canPhrase :: Boolean -- can we start a new phrase at this note
   }
 

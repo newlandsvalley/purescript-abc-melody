@@ -20,10 +20,6 @@ type Accumulator =
   , subPhrases :: Melody -- accumulated previously built pages
   }
 
--- the default volume
-defaultVolume :: Number
-defaultVolume = 0.5
-
 -- | Process a new note by adding to the accumulator
 -- | starting a new phrase when the time offset gets beyond the cutoff
 processNote :: Accumulator -> INote -> Accumulator
@@ -58,7 +54,7 @@ buildNote inote offset =
   , id: inote.id
   , timeOffset: offset
   , duration: inote.duration
-  , gain: defaultVolume
+  , gain: inote.gain
   }
 
 initialAcc :: Number -> Accumulator

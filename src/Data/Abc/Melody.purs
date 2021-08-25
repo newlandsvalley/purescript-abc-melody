@@ -19,7 +19,7 @@ import Audio.SoundFont.Melody.Class (class Playable)
 import Control.Monad.State (State, get, put, execState)
 import Data.Abc (AbcNote, AbcRest, AbcTune, Accidental(..), Bar, BarLine, BodyPart(..), Broken(..), Grace, GraceableNote, Header(..), ModifiedKeySignature, Music(..), MusicLine, NoteDuration, Pitch(..), RestOrNote, TempoSignature, TuneBody)
 import Data.Abc.Accidentals as Accidentals
-import Data.Abc.KeySignature (defaultKey, modifiedKeySet, pitchNumber, notesInChromaticScale)
+import Data.Abc.KeySignature (defaultKey, modifiedKeySet, notesInChromaticScale, pitchNumber)
 import Data.Abc.Melody.Intro (appendIntroSections)
 import Data.Abc.Melody.RepeatBuilder (buildRepeatedMelody)
 import Data.Abc.Melody.RepeatSections (initialRepeatState, indexBar, finalBar)
@@ -36,9 +36,10 @@ import Data.List.NonEmpty (head, length, tail, toList) as Nel
 import Data.Map (empty)
 import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
 import Data.Rational (Rational, fromInt, toNumber, (%))
-import RhythmGuitar.Types (MidiPitchChordMap)
 import Data.Tuple (Tuple(..))
 import Prelude (bind, identity, map, pure, ($), (&&), (*), (+), (-), (/), (<>), (==), (||), (>))
+import RhythmGuitar.Audio (lookupChordMidiPitches)
+import RhythmGuitar.Types (MidiChordConfig, MidiPitchChordMap, defaultMidiChordConfig)
 
 -- | Properties of an ABC tune that determine how it shall be played
 type PlayableAbcProperties =
@@ -75,6 +76,10 @@ type MidiPitch =
 graceFraction :: Rational
 graceFraction =
   (1 % 10)
+
+-- the default volume
+defaultVolume :: Number
+defaultVolume = 0.5
 
 -- | Convert the ABC tune to a melody that is playable in a soundfonts player widget
 toPlayableMelody :: PlayableAbc -> Melody
@@ -220,6 +225,9 @@ transformMusic m =
 
     Inline header ->
       transformHeader header
+
+    ChordSymbol symbol ->
+      updateState addAccompanimentToState symbol
 
     _ ->
       do
@@ -455,7 +463,7 @@ addChordalNotesToState tempoModifier tstate abcNotes =
 processChordalNote :: Rational -> TState -> AbcNote -> Boolean -> IPhrase
 processChordalNote tempoModifier tstate abcNote canPhrase =
   let
-    -- we#re not allowed a phrase boundary at a chordal note
+    -- we're not allowed a phrase boundary at a chordal note
     newNote = emitNote tempoModifier tstate abcNote canPhrase
   in
     case tstate.lastNoteTied of
@@ -568,6 +576,25 @@ addTempoToState tstate tempoSig =
   in
     tstate { abcTempo = abcTempo' }
 
+-- | Add the notes that correspond to the chord symbol if we find them
+-- | Note that these are played on a different channel from the main melody
+-- | and they do not contribute to the 'pacing' of the melody proper
+addAccompanimentToState :: TState -> String -> TState
+addAccompanimentToState tstate chordSym =
+  case (lookupChordMidiPitches chordSym tstate.chordMap) of
+    Just pitches ->
+      let
+        config = defaultMidiChordConfig
+          { timeOffset = tstate.currentOffset
+          , gain = 0.125
+          }
+        notes = map (iNoteAccompaniment config) pitches
+        currentBar = tstate.currentBar { iPhrase = (notes <> tstate.currentBar.iPhrase) }
+      in
+        tstate { currentBar = currentBar }
+    _ ->
+      tstate
+
 -- utility functions
 
 -- | if the incoming note has an explicit accidental (overriding the key signature)
@@ -580,14 +607,28 @@ addNoteToBarAccidentals abcNote accs =
     acc ->
       Accidentals.add abcNote.pitchClass acc accs
 
--- | Generate an intermediate MIDI note destieed for the Melody buffer
+-- | Generate an intermediate MIDI note destined for the Melody buffer
+-- | as part of the melody proper
 iNote :: Number -> Number -> Int -> Boolean -> INote
 iNote offset duration pitch canPhrase =
   { channel: 0 -- the MIDI channel
   , id: pitch -- the MIDI pitch number
   , timeOffset: offset -- the time delay in seconds before the note is played
   , duration: duration -- the duration of the note
+  , gain: defaultVolume -- the volume of the note
   , canPhrase: canPhrase -- can we form a new phrase at this note?
+  }
+
+-- | Generate an intermediate MIDI note destined for the Melody buffer
+-- | but here representing the accompaniment on a different channel
+iNoteAccompaniment :: MidiChordConfig -> Int -> INote
+iNoteAccompaniment config pitch =
+  { channel: config.channel -- the MIDI channel
+  , id: pitch -- the MIDI pitch number
+  , timeOffset: config.timeOffset -- the time delay in seconds before the note is played
+  , duration: config.duration -- the duration of the note
+  , gain: config.gain -- The volume of the note
+  , canPhrase: false -- can we form a new phrase at this note?
   }
 
 -- | work out the broken rhythm tempo

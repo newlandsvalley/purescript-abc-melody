@@ -14,25 +14,31 @@ import Halogen.Aff as HA
 import Halogen.VDom.Driver (runUI)
 import Halogen.PlayerComponent (component)
 import Prelude (Unit, unit, bind, discard, pure, (<>), ($))
+import RhythmGuitar.Audio (buildMidiChordMap)
+import RhythmGuitar.Network (loadDefaultChordShapes)
+
 
 loadInstruments :: Aff (Array Instrument)
 loadInstruments =
-  loadRemoteSoundFonts [ AcousticGrandPiano ]
+  loadRemoteSoundFonts [ AcousticGrandPiano, AcousticGuitarSteel ]
 
 main :: Effect Unit
 main = HA.runHalogenAff do
-  instruments <- H.liftAff loadInstruments
+  instruments <- H.liftAff loadInstruments 
+  chordShapes <- H.liftAff loadDefaultChordShapes
   let
-    abcText = ossian -- augustsson
-    etune = parse abcText
+    abcText = fjällnäs --- ossian -- augustsson
+    etune = parse abcText 
+    chordMap = buildMidiChordMap chordShapes
   body <- HA.awaitBody
   case etune of
     Right abcTune -> do
       let
         props = defaultPlayableAbcProperties
           { tune = abcTune
-          , phraseSize = 0.6
-          , generateIntro = true
+          , phraseSize = 1.5
+          , generateIntro = false
+          , chordMap = chordMap
           }
         playableAbc = PlayableAbc props
       _ <- runUI (component playableAbc instruments) unit body
@@ -72,3 +78,14 @@ ossian =
     <> "K: D\r\n"
     <> "|: D2F A2d f2a | a2g efg f3 | efg f2d e2c |1,3 ABc d2A FAF :|2,4 ABc d6 :|\r\n"
     <> "|: {c}B2A Bd2 c2B | A2a faf dfd | A2g ege cec |1,3 A2a fdf d2c :|2,4 ABc d6 :|\r\n"
+
+fjällnäs :: String
+fjällnäs =
+  "X:1\r\n"
+    <> "T:Polska från Fjällnäs\r\n"
+    <> "R:Polska\r\n"
+    <> "L:1/8\r\n"
+    <> "M:3/4\r\n"
+    <> "K:G\r\n"
+    <> " \"G\"G2G>B \"D7\"A>F | \"G\"G2B>dg2 | \"Am\"a2a>g \"D7\"fe/f/ |1 \"G\"g2b>g \"D7\"d>B :|2 \"G\"g2g4 |]\r\n"
+    <> "|: \"G\"d2B>d g>f | \"C\"e2e>dc2 | \"D7\"a2a>g fe/f/ |1 \"G\"g2b>g \"D7\"d>B :|2 \"G\"g2g4 |]\r\n"
