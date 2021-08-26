@@ -30,6 +30,7 @@ import Data.Array as Array
 import Data.Bifunctor (bimap)
 import Data.Either (Either(..))
 import Data.Foldable (foldl, oneOf)
+import Data.Int (toNumber) as Int
 import Data.List (List(..), (:))
 import Data.List.NonEmpty (NonEmptyList)
 import Data.List.NonEmpty (head, length, tail, toList) as Nel
@@ -99,6 +100,8 @@ type TState =
   , abcTempo :: AbcTempo -- the current tempo
   , phraseSize :: Number -- max size of a MIDI phrase
   , chordMap :: MidiPitchChordMap -- map of chord symbol to note pitches
+  , chordDuration :: Number -- the duration of any chord (in seconds) in the accompaniment
+  , chordVolume :: Number -- the volume (gain) of a chord (between 0 and 1)
   , currentBar :: MidiBar -- the current bar being translated
   , currentBarAccidentals :: Accidentals.Accidentals -- can't put this in MidiBar because of typeclass constraints
   -- any notes marked explicitly as accidentals in the current bar
@@ -586,7 +589,8 @@ addAccompanimentToState tstate chordSym =
       let
         config = defaultMidiChordConfig
           { timeOffset = tstate.currentOffset
-          , gain = 0.125
+          , gain = tstate.chordVolume
+          , duration = tstate.chordDuration
           }
         notes = map (iNoteAccompaniment config) pitches
         currentBar = tstate.currentBar { iPhrase = (notes <> tstate.currentBar.iPhrase) }
@@ -775,11 +779,15 @@ initialState props tune =
   let
     abcTempo = getAbcTempo tune
     keySignature = fromMaybe defaultKey (getKeySig tune)
+    -- set chord duration to the duration of a single beat
+    chordDuration = 60.0 / (Int.toNumber abcTempo.bpm)
   in
     { modifiedKeySignature: keySignature
-    , abcTempo: abcTempo
+    , abcTempo
     , phraseSize: props.phraseSize
     , chordMap: props.chordMap
+    , chordDuration
+    , chordVolume: 0.15
     , currentBar: initialBar
     , currentBarAccidentals: Accidentals.empty
     , currentOffset: 0.0

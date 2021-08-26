@@ -7,5 +7,7 @@
 /.spago/
 /.psc*
 /.psa*
+/.vscode
+/.metals
 sections.txt
 .purs-repl
