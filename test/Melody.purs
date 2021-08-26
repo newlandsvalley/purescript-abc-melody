@@ -308,10 +308,10 @@ phrasingSuite :: Free TestF Unit
 phrasingSuite =
   suite "phrasing" do
     test "split long phrase" do
-      -- we shpuld form a new phrase after the first 3 notes
+      -- we should form a new phrase after the first 3 notes
       assertMelodyShortPhrase "| CDE DEF |\r\n" [ [ noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25 ], [ noteD 0.0 0.25, noteE 0.25 0.25, noteF 0.5 0.25 ] ]
     test "phrase boundary for chords - first note" do
-      -- we can break at the first note in a chord
+      -- we can break at the first note in a chord unless it follows a chord symbol
       assertMelodyShortPhrase "| CDE [DE] F |\r\n" [ [ noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25 ], [ noteD 0.0 0.25, noteE 0.0 0.25, noteF 0.25 0.25 ] ]
     test "phrase boundary for chords - subsequent notes" do
       -- we can't break at subsequent notes in a chord

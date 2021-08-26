@@ -38,7 +38,7 @@ import Data.Map (empty)
 import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
 import Data.Rational (Rational, fromInt, toNumber, (%))
 import Data.Tuple (Tuple(..))
-import Prelude (bind, identity, map, pure, ($), (&&), (*), (+), (-), (/), (<>), (==), (||), (>))
+import Prelude (bind, identity, map, not, pure, ($), (&&), (*), (+), (-), (/), (<>), (==), (||), (>))
 import RhythmGuitar.Audio (lookupChordMidiPitches)
 import RhythmGuitar.Types (MidiChordConfig, MidiPitchChordMap, defaultMidiChordConfig)
 
@@ -102,6 +102,7 @@ type TState =
   , chordMap :: MidiPitchChordMap -- map of chord symbol to note pitches
   , chordDuration :: Number -- the duration of any chord (in seconds) in the accompaniment
   , chordVolume :: Number -- the volume (gain) of a chord (between 0 and 1)
+  , chordIsLastItem :: Boolean -- true if the last Music item encountered was a chord symbol
   , currentBar :: MidiBar -- the current bar being translated
   , currentBarAccidentals :: Accidentals.Accidentals -- can't put this in MidiBar because of typeclass constraints
   -- any notes marked explicitly as accidentals in the current bar
@@ -315,6 +316,7 @@ addGraceableNoteToState tempoModifier tstate graceableNote =
       { currentBar = tstate.currentBar { iPhrase = notes }
       , lastNoteTied = newTie
       , currentBarAccidentals = barAccidentals
+      , chordIsLastItem = false
       }
     -- if the last note was tied, we need its duration to be able to pace the next note
     lastTiedNoteDuration = maybe (0 % 1) _.abcNote.duration tstate.lastNoteTied
@@ -335,7 +337,10 @@ addRestToState tempoModifier tstate rest =
     note = emitRest tempoModifier tstate rest
     notes = Array.cons note tstate.currentBar.iPhrase
     currentBar = tstate.currentBar { iPhrase = notes }
-    tstate' = tstate { currentBar = currentBar }
+    tstate' = tstate
+      { currentBar = currentBar
+      , chordIsLastItem = false
+      }
   in
     incrementTimeOffset tstate' (rest.duration * tempoModifier)
 
@@ -373,7 +378,6 @@ processNoteWithTie tempoModifier tstate graceableNote =
             else
               let
                 -- and emit the note but now including the extra offset of the graces
-                -- note = emitNotePlus tempoModifier tstate gracedNote gracedNoteExtraOffset
                 phrase = emitGracesAndNote tempoModifier tstate combinedGraceableNote
               in
                 -- write out the note to be held in bar state
@@ -401,7 +405,6 @@ processNoteWithTie tempoModifier tstate graceableNote =
         else
           let
             -- and emit the note but now including the extra offset of the graces
-            -- note = emitNotePlus tempoModifier tstate gracedNote gracedNoteExtraOffset
             phrase = emitGracesAndNote tempoModifier tstate graceableNote
           in
             -- write out the note to the current MIDI bar
@@ -432,7 +435,8 @@ emitGracesAndNote tempoModifier tstate graceableNote =
     gracedNoteExtraOffset = sumDurations graceNotesPhrase
     gracedNote = curtailedGracedNote graceableNote.maybeGrace graceableNote.abcNote
     -- and we choose not to allow phrase boundaries if the note is graced
-    canPhrase = isNothing graceableNote.maybeGrace
+    -- or of course if the last item was a chord symbol
+    canPhrase = isNothing graceableNote.maybeGrace && (not tstate.chordIsLastItem)
     mainNote = emitNotePlus tempoModifier tstate gracedNote gracedNoteExtraOffset canPhrase
   in
     Array.cons mainNote graceNotesPhrase
@@ -448,14 +452,16 @@ addChordalNoteToState tempoModifier canPhrase tstate abcNote =
     tstate
       { currentBar = tstate.currentBar { iPhrase = notes }
       , currentBarAccidentals = barAccidentals
+      , chordIsLastItem = false
       }
 
 -- | Add notes from a chord to state
 addChordalNotesToState :: Rational -> TState -> NonEmptyList AbcNote -> TState
 addChordalNotesToState tempoModifier tstate abcNotes =
   let
-    -- process the first note in the chord separately because qe can break phrase here
-    tstate' = addChordalNoteToState tempoModifier true tstate (Nel.head abcNotes)
+    -- process the first note in the chord separately because we can break phrase here
+    -- unless the chord immediately follows a chord symbol
+    tstate' = addChordalNoteToState tempoModifier (not tstate.chordIsLastItem) tstate (Nel.head abcNotes)
   in
     -- then process the rest - we can't brak phrase in these
     foldl (addChordalNoteToState tempoModifier false) tstate' (Nel.tail abcNotes)
@@ -595,7 +601,10 @@ addAccompanimentToState tstate chordSym =
         notes = map (iNoteAccompaniment config) pitches
         currentBar = tstate.currentBar { iPhrase = (notes <> tstate.currentBar.iPhrase) }
       in
-        tstate { currentBar = currentBar }
+        tstate
+          { currentBar = currentBar
+          , chordIsLastItem = true
+          }
     _ ->
       tstate
 
@@ -788,6 +797,7 @@ initialState props tune =
     , chordMap: props.chordMap
     , chordDuration
     , chordVolume: 0.15
+    , chordIsLastItem: false
     , currentBar: initialBar
     , currentBarAccidentals: Accidentals.empty
     , currentOffset: 0.0

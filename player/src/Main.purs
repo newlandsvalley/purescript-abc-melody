@@ -36,7 +36,7 @@ main = HA.runHalogenAff do
       let
         props = defaultPlayableAbcProperties
           { tune = abcTune
-          , phraseSize = 1.1
+          , phraseSize = 0.9
           , generateIntro = false
           , chordMap = chordMap
           }
