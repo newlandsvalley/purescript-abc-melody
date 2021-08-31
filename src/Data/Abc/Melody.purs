@@ -103,7 +103,7 @@ type TState =
   , chordMap :: MidiPitchChordMap -- map of chord symbol to note pitches
   , chordDuration :: Number -- the duration of any chord (in seconds) in the accompaniment
   , chordVolume :: Number -- the volume (gain) of a chord (between 0 and 1)
-  , chordIsLastItem :: Boolean -- true if the last Music item encountered was a chord symbol
+  , chordSymbolIsLastItem :: Boolean -- true if the last Music item encountered was a chord symbol
   , currentBar :: MidiBar -- the current bar being translated
   , currentBarAccidentals :: Accidentals.Accidentals -- can't put this in MidiBar because of typeclass constraints
   -- any notes marked explicitly as accidentals in the current bar
@@ -316,7 +316,7 @@ addGraceableNoteToState tempoModifier tstate graceableNote =
       { currentBar = tstate.currentBar { iPhrase = notes }
       , lastNoteTied = newTie
       , currentBarAccidentals = barAccidentals
-      , chordIsLastItem = false
+      , chordSymbolIsLastItem = false
       }
     -- if the last note was tied, we need its duration to be able to pace the next note
     lastTiedNoteDuration = maybe (0 % 1) _.abcNote.duration tstate.lastNoteTied
@@ -339,7 +339,7 @@ addRestToState tempoModifier tstate rest =
     currentBar = tstate.currentBar { iPhrase = notes }
     tstate' = tstate
       { currentBar = currentBar
-      , chordIsLastItem = false
+      , chordSymbolIsLastItem = false
       }
   in
     incrementTimeOffset tstate' (rest.duration * tempoModifier)
@@ -436,7 +436,7 @@ emitGracesAndNote tempoModifier tstate graceableNote =
     gracedNote = curtailedGracedNote graceableNote.maybeGrace graceableNote.abcNote
     -- and we choose not to allow phrase boundaries if the note is graced
     -- or of course if the last item was a chord symbol
-    canPhrase = isNothing graceableNote.maybeGrace && (not tstate.chordIsLastItem)
+    canPhrase = isNothing graceableNote.maybeGrace && (not tstate.chordSymbolIsLastItem)
     mainNote = emitNotePlus tempoModifier tstate gracedNote gracedNoteExtraOffset canPhrase
   in
     Array.cons mainNote graceNotesPhrase
@@ -453,7 +453,7 @@ addChordalNotesToState tempoModifier tstate abcNotes =
     tstate
       { currentBar = tstate.currentBar { iPhrase = notes }
       , currentBarAccidentals = barAccidentals
-      , chordIsLastItem = false
+      , chordSymbolIsLastItem = false
       }
 
 processChordalNotes :: Rational -> TState -> NonEmptyList AbcNote -> Boolean -> IPhrase
@@ -606,7 +606,7 @@ addAccompanimentToState tstate chordSym =
           in
             tstate
               { currentBar = currentBar
-              , chordIsLastItem = true
+              , chordSymbolIsLastItem = true
               }
         _ ->
           tstate
@@ -815,7 +815,7 @@ initialState props tune =
     , chordMap: props.chordMap
     , chordDuration
     , chordVolume: 0.15
-    , chordIsLastItem: false
+    , chordSymbolIsLastItem: false
     , currentBar: initialBar
     , currentBarAccidentals: Accidentals.empty
     , currentOffset: 0.0

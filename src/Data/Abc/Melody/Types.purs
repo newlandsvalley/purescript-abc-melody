@@ -9,7 +9,7 @@ import Prelude (class Eq, class Show)
 
 -- | An intermediate note representation
 -- | This represents a single note if pitches is a singleton 
--- | or a chord (wwith all other parameters identical) if there is 
+-- | or a chord (i.e. with all other parameters identical) if there is 
 -- | more than one pitch
 type INote =
   { channel :: Int -- the MIDI channel
