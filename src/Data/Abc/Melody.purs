@@ -27,7 +27,7 @@ import Data.Abc.Metadata (dotFactor, getKeySig)
 import Data.Abc.Repeats.Types (RepeatState)
 import Data.Abc.Tempo (AbcTempo, getAbcTempo, setBpm, beatsPerSecond)
 import Data.Array as Array
-import Data.Array.NonEmpty (NonEmptyArray, fromArray, fromFoldable1, reverse, singleton) as NEA
+import Data.Array.NonEmpty (NonEmptyArray, fromFoldable1, reverse, singleton) as NEA
 import Data.Bifunctor (bimap)
 import Data.Either (Either(..))
 import Data.Foldable (foldl, oneOf)
@@ -592,24 +592,20 @@ addTempoToState tstate tempoSig =
 addAccompanimentToState :: TState -> String -> TState
 addAccompanimentToState tstate chordSym =
   case (lookupChordMidiPitches chordSym tstate.chordMap) of
-    Just pitchesArray ->
-      case (NEA.fromArray pitchesArray) of
-        Just pitches ->
-          let
-            config = defaultMidiChordConfig
-              { timeOffset = tstate.currentOffset
-              , gain = tstate.chordVolume
-              , duration = tstate.chordDuration
-              }
-            inote = iNoteAccompaniment config pitches
-            currentBar = tstate.currentBar { iPhrase = (Array.cons inote tstate.currentBar.iPhrase) }
-          in
-            tstate
-              { currentBar = currentBar
-              , chordSymbolIsLastItem = true
-              }
-        _ ->
-          tstate
+    Just pitches ->
+      let
+        config = defaultMidiChordConfig
+          { timeOffset = tstate.currentOffset
+          , gain = tstate.chordVolume
+          , duration = tstate.chordDuration
+          }
+        inote = iNoteAccompaniment config pitches
+        currentBar = tstate.currentBar { iPhrase = (Array.cons inote tstate.currentBar.iPhrase) }
+      in
+        tstate
+          { currentBar = currentBar
+          , chordSymbolIsLastItem = true
+          }
     _ ->
       tstate
 
