@@ -27,14 +27,14 @@ import Data.Abc.Metadata (dotFactor, getKeySig)
 import Data.Abc.Repeats.Types (RepeatState)
 import Data.Abc.Tempo (AbcTempo, getAbcTempo, setBpm, beatsPerSecond)
 import Data.Array as Array
-import Data.Array.NonEmpty (NonEmptyArray, fromArray, singleton) as NEA
+import Data.Array.NonEmpty (NonEmptyArray, fromArray, fromFoldable1, reverse, singleton) as NEA
 import Data.Bifunctor (bimap)
 import Data.Either (Either(..))
 import Data.Foldable (foldl, oneOf)
 import Data.Int (toNumber) as Int
 import Data.List (List(..), (:))
 import Data.List.NonEmpty (NonEmptyList)
-import Data.List.NonEmpty (head, length, tail, toList) as Nel
+import Data.List.NonEmpty (head, length, tail, toList) as NEL
 import Data.Map (empty)
 import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
 import Data.Rational (Rational, fromInt, toNumber, (%))
@@ -205,17 +205,16 @@ transformMusic m =
       updateState (addTupletContentsToState t.maybeGrace (t.signature.q % t.signature.p)) t.restsOrNotes
 
     Chord abcChord ->
-      let
-        first = Nel.head abcChord.notes
-        -- we'll pace the chord from the duration of the first note it contains,
-        -- modified by the overall chord duration
-        duration = abcChord.duration * first.duration
-      in
-        do
-          -- set the notes all to start at the same time with the correct duration
-          _ <- updateState (addChordalNotesToState abcChord.duration) abcChord.notes
-          -- pace by incrementing the offset for the next note
-          updateState incrementTimeOffset duration
+      do
+        -- set the notes all to start at the same time with the correct duration
+        _ <- updateState (addChordalNotesToState abcChord.duration) abcChord.notes
+        -- pace by incrementing the offset for the next note
+        updateState incrementTimeOffset fullDuration
+      where
+      first = NEL.head abcChord.notes
+      -- we'll pace the chord from the duration of the first note it contains,
+      -- modified by the overall chord duration which is the full duration
+      fullDuration = abcChord.duration * first.duration
 
     BrokenRhythmPair note1 broken note2 ->
       case broken of
@@ -312,7 +311,7 @@ addGraceableNoteToState tempoModifier tstate graceableNote =
     Tuple notes newTie =
       processNoteWithTie tempoModifier tstate graceableNote
     barAccidentals =
-      addNoteToBarAccidentals abcNote tstate.currentBarAccidentals
+      addNoteToBarAccidentals tstate.currentBarAccidentals abcNote
     tstate' = tstate
       { currentBar = tstate.currentBar { iPhrase = notes }
       , lastNoteTied = newTie
@@ -428,7 +427,7 @@ emitGracesAndNote tempoModifier tstate graceableNote =
     graceAbcNotes =
       case graceableNote.maybeGrace of
         Just grace ->
-          map (individualGraceNote graceableNote.abcNote) $ Nel.toList grace.notes
+          map (individualGraceNote graceableNote.abcNote) $ NEL.toList grace.notes
         _ ->
           Nil
     graceNotesPhrase = emitGraceNotes tempoModifier tstate graceAbcNotes
@@ -442,13 +441,14 @@ emitGracesAndNote tempoModifier tstate graceableNote =
   in
     Array.cons mainNote graceNotesPhrase
 
-addChordalNoteToState :: Rational -> Boolean -> TState -> AbcNote -> TState
-addChordalNoteToState tempoModifier canPhrase tstate abcNote =
+-- | Add notes from a chord to state
+addChordalNotesToState :: Rational -> TState -> NonEmptyList AbcNote -> TState
+addChordalNotesToState tempoModifier tstate abcNotes =
   let
     notes =
-      processChordalNote tempoModifier tstate abcNote canPhrase
+      processChordalNotes tempoModifier tstate abcNotes true
     barAccidentals =
-      addNoteToBarAccidentals abcNote tstate.currentBarAccidentals
+      foldl addNoteToBarAccidentals tstate.currentBarAccidentals abcNotes
   in
     tstate
       { currentBar = tstate.currentBar { iPhrase = notes }
@@ -456,37 +456,21 @@ addChordalNoteToState tempoModifier canPhrase tstate abcNote =
       , chordIsLastItem = false
       }
 
--- | Add notes from a chord to state
-addChordalNotesToState :: Rational -> TState -> NonEmptyList AbcNote -> TState
-addChordalNotesToState tempoModifier tstate abcNotes =
-  let
-    -- process the first note in the chord separately because we can break phrase here
-    -- unless the chord immediately follows a chord symbol
-    tstate' = addChordalNoteToState tempoModifier (not tstate.chordIsLastItem) tstate (Nel.head abcNotes)
-  in
-    -- then process the rest - we can't brak phrase in these
-    foldl (addChordalNoteToState tempoModifier false) tstate' (Nel.tail abcNotes)
-
--- | process the incoming  note that is part of a chord.
--- | Here, ties and grace notes preceding the note
--- | are not supported
-processChordalNote :: Rational -> TState -> AbcNote -> Boolean -> IPhrase
-processChordalNote tempoModifier tstate abcNote canPhrase =
-  let
-    -- we're not allowed a phrase boundary at a chordal note
-    newNote = emitNote tempoModifier tstate abcNote canPhrase
-  in
-    case tstate.lastNoteTied of
-      Just lastNote ->
-        -- we don't support ties or grace notes into chords
-        -- just emit the tied note before the chordal note
-        -- and we can form a new phrase at this note
-        let
-          tiedNote = emitNote tempoModifier tstate lastNote.abcNote true
-        in
-          Array.cons newNote (Array.cons tiedNote tstate.currentBar.iPhrase)
-      _ ->
-        Array.cons newNote tstate.currentBar.iPhrase
+processChordalNotes :: Rational -> TState -> NonEmptyList AbcNote -> Boolean -> IPhrase
+processChordalNotes tempoModifier tstate abcNotes canPhrase =
+  case tstate.lastNoteTied of
+    Just lastNote ->
+      -- we don't support ties or grace notes into chords
+      -- just emit the tied note before the chordal note
+      -- and we can form a new phrase at this note
+      let
+        tiedNote = emitNote tempoModifier tstate lastNote.abcNote true
+      in
+        Array.cons newINote (Array.cons tiedNote tstate.currentBar.iPhrase)
+    _ ->
+      Array.cons newINote tstate.currentBar.iPhrase
+  where
+  newINote = emitNotes tempoModifier tstate abcNotes canPhrase
 
 -- | emit a MidiNote at the given offset held in TState
 emitNote :: Rational -> TState -> AbcNote -> Boolean -> INote
@@ -498,11 +482,27 @@ emitNotePlus :: Rational -> TState -> AbcNote -> Number -> Boolean -> INote
 emitNotePlus tempoModifier tstate abcNote extraOffset canPhrase =
   let
     pitch =
-      toMidiPitch abcNote tstate.modifiedKeySignature tstate.currentBarAccidentals
+      toMidiPitch tstate.modifiedKeySignature tstate.currentBarAccidentals abcNote
     duration =
       noteDuration tstate.abcTempo (abcNote.duration * tempoModifier)
   in
     iNote (tstate.currentOffset + extraOffset) duration pitch canPhrase
+
+-- | emit a bunch of notes from a chord
+emitNotes :: Rational -> TState -> NonEmptyList AbcNote -> Boolean -> INote
+emitNotes tempoModifier tstate abcNotes canPhrase =
+  let
+    pitches :: NEA.NonEmptyArray Int
+    pitches =
+      -- it's not really necessary to reverse here because all the notes start at the 
+      -- same offset but it simplifies testing if we use the same order as in the ABC chord
+      NEA.reverse $ NEA.fromFoldable1 $
+        map (toMidiPitch tstate.modifiedKeySignature tstate.currentBarAccidentals) abcNotes
+    -- for the duration, take the first note in the chord 
+    duration =
+      noteDuration tstate.abcTempo ((NEL.head abcNotes).duration * tempoModifier)
+  in
+    iNotes tstate.currentOffset duration pitches canPhrase
 
 -- | emit a rest which is a note without a pitch (id 0)
 emitRest :: Rational -> TState -> AbcRest -> INote
@@ -593,23 +593,23 @@ addAccompanimentToState :: TState -> String -> TState
 addAccompanimentToState tstate chordSym =
   case (lookupChordMidiPitches chordSym tstate.chordMap) of
     Just pitchesArray ->
-      case (NEA.fromArray pitchesArray) of 
-      Just pitches -> 
-        let
-          config = defaultMidiChordConfig
-            { timeOffset = tstate.currentOffset
-            , gain = tstate.chordVolume
-            , duration = tstate.chordDuration
-            }
-          inote = iNoteAccompaniment config pitches
-          currentBar = tstate.currentBar { iPhrase = (Array.cons inote tstate.currentBar.iPhrase) }
-        in
+      case (NEA.fromArray pitchesArray) of
+        Just pitches ->
+          let
+            config = defaultMidiChordConfig
+              { timeOffset = tstate.currentOffset
+              , gain = tstate.chordVolume
+              , duration = tstate.chordDuration
+              }
+            inote = iNoteAccompaniment config pitches
+            currentBar = tstate.currentBar { iPhrase = (Array.cons inote tstate.currentBar.iPhrase) }
+          in
+            tstate
+              { currentBar = currentBar
+              , chordIsLastItem = true
+              }
+        _ ->
           tstate
-            { currentBar = currentBar
-            , chordIsLastItem = true
-            }
-      _ -> 
-        tstate
     _ ->
       tstate
 
@@ -617,8 +617,8 @@ addAccompanimentToState tstate chordSym =
 
 -- | if the incoming note has an explicit accidental (overriding the key signature)
 -- | then add it to the accidentals in force in the current bar
-addNoteToBarAccidentals :: AbcNote -> Accidentals.Accidentals -> Accidentals.Accidentals
-addNoteToBarAccidentals abcNote accs =
+addNoteToBarAccidentals :: Accidentals.Accidentals -> AbcNote -> Accidentals.Accidentals
+addNoteToBarAccidentals accs abcNote =
   case abcNote.accidental of
     Implicit ->
       accs
@@ -638,8 +638,19 @@ iNote offset duration pitch canPhrase =
   }
 
 -- | Generate an intermediate MIDI note destined for the Melody buffer
+-- | which represents a chord (as part of the melody proper)
+iNotes :: Number -> Number -> NEA.NonEmptyArray Int -> Boolean -> INote
+iNotes offset duration pitches canPhrase =
+  { channel: 0 -- the MIDI channel
+  , pitches: pitches -- the MIDI pitch number
+  , timeOffset: offset -- the time delay in seconds before the note is played
+  , duration: duration -- the duration of the note
+  , gain: defaultVolume -- the volume of the note
+  , canPhrase: canPhrase -- can we form a new phrase at this note?
+  }
+
+-- | Generate an intermediate MIDI note destined for the Melody buffer
 -- | but here representing the accompaniment on a different channel
--- | JMW - optimise this later!!!
 iNoteAccompaniment :: MidiChordConfig -> NEA.NonEmptyArray Int -> INote
 iNoteAccompaniment config pitches =
   { channel: config.channel -- the MIDI channel
@@ -682,7 +693,7 @@ curtailedGracedNote maybeGrace abcNote =
   case maybeGrace of
     Just grace ->
       let
-        totalFraction = (fromInt $ Nel.length grace.notes) * graceFraction
+        totalFraction = (fromInt $ NEL.length grace.notes) * graceFraction
         duration = abcNote.duration - (abcNote.duration * totalFraction)
       in
         abcNote { duration = duration }
@@ -701,8 +712,8 @@ individualGraceNote abcNote graceNote =
 gracifyFirstNote :: Maybe Grace -> NonEmptyList RestOrNote -> List RestOrNote
 gracifyFirstNote maybeGrace restsOrNotes =
   let
-    hd = Nel.head restsOrNotes
-    tl = Nel.tail restsOrNotes
+    hd = NEL.head restsOrNotes
+    tl = NEL.tail restsOrNotes
     f :: RestOrNote -> RestOrNote
     f =
       bimap identity (\gn -> gn { maybeGrace = maybeGrace })
@@ -733,9 +744,10 @@ legitimateTie tstate tiedNote nextNote =
 -- | ModifiedKeySignature - the key signature (possibly modified by extra accidentals)
 -- | Accidentals - any notes in this bar which have previously been set explicitly to an accidental which are thus inherited by this note
 -- | MidiPitch - the resulting pitch of the MIDI note
-toMidiPitch :: AbcNote -> ModifiedKeySignature -> Accidentals.Accidentals -> MidiPitch
-toMidiPitch n mks barAccidentals =
+toMidiPitch :: ModifiedKeySignature -> Accidentals.Accidentals -> AbcNote -> MidiPitch
+toMidiPitch mks barAccidentals n =
   (n.octave * notesInChromaticScale) + midiPitchOffset n mks barAccidentals
+
 -- | convert an AbcNote (pich class and accidental) to a pitch offset in a chromatic scale
 midiPitchOffset :: AbcNote -> ModifiedKeySignature -> Accidentals.Accidentals -> Int
 midiPitchOffset n mks barAccidentals =

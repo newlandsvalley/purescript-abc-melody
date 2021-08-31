@@ -32,14 +32,14 @@ processINote acc inote =
     if (null acc.current) then
       acc
         { originalOffset = inote.timeOffset
-        , current = buildNotes inote 0.0 
+        , current = buildNotes inote 0.0
         }
     -- and we start a new phrase if we're past the phrase boundary and also if we're
     -- allowed to break phrase at this new note
     else if ((newOffset > acc.cutoff) && inote.canPhrase) then
       acc
         { originalOffset = inote.timeOffset
-        , current = buildNotes inote 0.0 
+        , current = buildNotes inote 0.0
         , subPhrases = consolidateCurrent acc
         }
     else
@@ -53,10 +53,10 @@ processINote acc inote =
 -- | but where there are multiple pitches it builds a chordful of MidiNote 
 buildNotes :: INote -> Number -> Array MidiNote
 buildNotes inote offset =
-  toArray $ map makeNote inote.pitches 
+  toArray $ map makeNote inote.pitches
 
-  where 
-  makeNote pitch = 
+  where
+  makeNote pitch =
     { channel: inote.channel
     , id: pitch
     , timeOffset: offset
