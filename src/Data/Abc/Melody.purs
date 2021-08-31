@@ -27,7 +27,7 @@ import Data.Abc.Metadata (dotFactor, getKeySig)
 import Data.Abc.Repeats.Types (RepeatState)
 import Data.Abc.Tempo (AbcTempo, getAbcTempo, setBpm, beatsPerSecond)
 import Data.Array as Array
-import Data.Array.NonEmpty (singleton) as NEA
+import Data.Array.NonEmpty (NonEmptyArray, fromArray, singleton) as NEA
 import Data.Bifunctor (bimap)
 import Data.Either (Either(..))
 import Data.Foldable (foldl, oneOf)
@@ -592,20 +592,24 @@ addTempoToState tstate tempoSig =
 addAccompanimentToState :: TState -> String -> TState
 addAccompanimentToState tstate chordSym =
   case (lookupChordMidiPitches chordSym tstate.chordMap) of
-    Just pitches ->
-      let
-        config = defaultMidiChordConfig
-          { timeOffset = tstate.currentOffset
-          , gain = tstate.chordVolume
-          , duration = tstate.chordDuration
-          }
-        notes = map (iNoteAccompaniment config) pitches
-        currentBar = tstate.currentBar { iPhrase = (notes <> tstate.currentBar.iPhrase) }
-      in
+    Just pitchesArray ->
+      case (NEA.fromArray pitchesArray) of 
+      Just pitches -> 
+        let
+          config = defaultMidiChordConfig
+            { timeOffset = tstate.currentOffset
+            , gain = tstate.chordVolume
+            , duration = tstate.chordDuration
+            }
+          inote = iNoteAccompaniment config pitches
+          currentBar = tstate.currentBar { iPhrase = (Array.cons inote tstate.currentBar.iPhrase) }
+        in
+          tstate
+            { currentBar = currentBar
+            , chordIsLastItem = true
+            }
+      _ -> 
         tstate
-          { currentBar = currentBar
-          , chordIsLastItem = true
-          }
     _ ->
       tstate
 
@@ -636,10 +640,10 @@ iNote offset duration pitch canPhrase =
 -- | Generate an intermediate MIDI note destined for the Melody buffer
 -- | but here representing the accompaniment on a different channel
 -- | JMW - optimise this later!!!
-iNoteAccompaniment :: MidiChordConfig -> Int -> INote
-iNoteAccompaniment config pitch =
+iNoteAccompaniment :: MidiChordConfig -> NEA.NonEmptyArray Int -> INote
+iNoteAccompaniment config pitches =
   { channel: config.channel -- the MIDI channel
-  , pitches: NEA.singleton pitch -- the MIDI pitch number
+  , pitches: pitches -- the MIDI pitch numbers of the chord
   , timeOffset: config.timeOffset -- the time delay in seconds before the note is played
   , duration: config.duration -- the duration of the note
   , gain: config.gain -- The volume of the note
