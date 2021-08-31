@@ -6,8 +6,9 @@ module Data.Abc.Melody.Phrasing
 -- | so as to allow a player the chance to interrupt the playback.
 -- | This can be invoked at the end of each sub-phrase
 
-import Prelude ((-), (>), (&&))
+import Prelude ((-), (>), (<>), (&&), ($), map)
 import Data.Array (cons, null, reverse)
+import Data.Array.NonEmpty (toArray)
 import Data.Foldable (foldl)
 import Audio.SoundFont (MidiNote)
 import Audio.SoundFont.Melody (MidiPhrase, Melody)
@@ -20,10 +21,10 @@ type Accumulator =
   , subPhrases :: Melody -- accumulated previously built pages
   }
 
--- | Process a new note by adding to the accumulator
+-- | Process a new note (or chord) by adding to the accumulator
 -- | starting a new phrase when the time offset gets beyond the cutoff
-processNote :: Accumulator -> INote -> Accumulator
-processNote acc inote =
+processINote :: Accumulator -> INote -> Accumulator
+processINote acc inote =
   let
     newOffset = inote.timeOffset - acc.originalOffset
   in
@@ -31,31 +32,37 @@ processNote acc inote =
     if (null acc.current) then
       acc
         { originalOffset = inote.timeOffset
-        , current = [ buildNote inote 0.0 ]
+        , current = buildNotes inote 0.0 
         }
     -- and we start a new phrase if we're past the phrase boundary and also if we're
     -- allowed to break phrase at this new note
     else if ((newOffset > acc.cutoff) && inote.canPhrase) then
       acc
         { originalOffset = inote.timeOffset
-        , current = [ buildNote inote 0.0 ]
+        , current = buildNotes inote 0.0 
         , subPhrases = consolidateCurrent acc
         }
     else
       -- just accumulate the note (in reverse order for efficiency)
       let
-        newNote = buildNote inote newOffset
+        newNotes = buildNotes inote newOffset
       in
-        acc { current = cons newNote acc.current }
+        acc { current = newNotes <> acc.current }
 
-buildNote :: INote -> Number -> MidiNote
-buildNote inote offset =
-  { channel: inote.channel
-  , id: inote.id
-  , timeOffset: offset
-  , duration: inote.duration
-  , gain: inote.gain
-  }
+-- | in most cases, this build a singleton MidiNote (when there is one pitch)
+-- | but where there are multiple pitches it builds a chordful of MidiNote 
+buildNotes :: INote -> Number -> Array MidiNote
+buildNotes inote offset =
+  toArray $ map makeNote inote.pitches 
+
+  where 
+  makeNote pitch = 
+    { channel: inote.channel
+    , id: pitch
+    , timeOffset: offset
+    , duration: inote.duration
+    , gain: inote.gain
+    }
 
 initialAcc :: Number -> Accumulator
 initialAcc cutoff =
@@ -75,7 +82,7 @@ consolidateCurrent acc =
 
 rephrase :: Accumulator -> IPhrase -> Accumulator
 rephrase acc0 phrase =
-  foldl processNote acc0 phrase
+  foldl processINote acc0 phrase
 
 -- rephrase a section of the melody, cutting it into interruptible slices
 rephraseSection :: Number -> IPhrase -> Melody

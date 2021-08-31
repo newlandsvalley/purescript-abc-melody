@@ -1,15 +1,19 @@
 module Data.Abc.Melody.Types where
 
 import Data.Abc (Volta)
+import Data.Array.NonEmpty (NonEmptyArray)
 import Data.List (List)
 import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe)
 import Prelude (class Eq, class Show)
 
 -- | An intermediate note representation
+-- | This represents a single note if pitches is a singleton 
+-- | or a chord (wwith all other parameters identical) if there is 
+-- | more than one pitch
 type INote =
   { channel :: Int -- the MIDI channel
-  , id :: Int -- the MIDI pitch number
+  , pitches :: NonEmptyArray Int -- the MIDI pitch numbers
   , timeOffset :: Number -- the time delay in seconds before the note is played
   , duration :: Number -- the duration of the note
   , gain :: Number -- the volume of the note 

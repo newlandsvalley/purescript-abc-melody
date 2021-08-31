@@ -27,6 +27,7 @@ import Data.Abc.Metadata (dotFactor, getKeySig)
 import Data.Abc.Repeats.Types (RepeatState)
 import Data.Abc.Tempo (AbcTempo, getAbcTempo, setBpm, beatsPerSecond)
 import Data.Array as Array
+import Data.Array.NonEmpty (singleton) as NEA
 import Data.Bifunctor (bimap)
 import Data.Either (Either(..))
 import Data.Foldable (foldl, oneOf)
@@ -625,7 +626,7 @@ addNoteToBarAccidentals abcNote accs =
 iNote :: Number -> Number -> Int -> Boolean -> INote
 iNote offset duration pitch canPhrase =
   { channel: 0 -- the MIDI channel
-  , id: pitch -- the MIDI pitch number
+  , pitches: NEA.singleton pitch -- the MIDI pitch number
   , timeOffset: offset -- the time delay in seconds before the note is played
   , duration: duration -- the duration of the note
   , gain: defaultVolume -- the volume of the note
@@ -634,10 +635,11 @@ iNote offset duration pitch canPhrase =
 
 -- | Generate an intermediate MIDI note destined for the Melody buffer
 -- | but here representing the accompaniment on a different channel
+-- | JMW - optimise this later!!!
 iNoteAccompaniment :: MidiChordConfig -> Int -> INote
 iNoteAccompaniment config pitch =
   { channel: config.channel -- the MIDI channel
-  , id: pitch -- the MIDI pitch number
+  , pitches: NEA.singleton pitch -- the MIDI pitch number
   , timeOffset: config.timeOffset -- the time delay in seconds before the note is played
   , duration: config.duration -- the duration of the note
   , gain: config.gain -- The volume of the note
