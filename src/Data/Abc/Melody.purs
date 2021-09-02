@@ -17,7 +17,7 @@ import Data.Abc.Melody.Types
 import Audio.SoundFont.Melody (Melody)
 import Audio.SoundFont.Melody.Class (class Playable)
 import Control.Monad.State (State, get, put, modify_, execState)
-import Data.Abc (AbcNote, AbcRest, AbcTune, Accidental(..), Bar, BarLine, BodyPart(..), Broken(..), Grace, GraceableNote, Header(..), ModifiedKeySignature, Music(..), MusicLine, NoteDuration, Pitch(..), RestOrNote, TempoSignature, TuneBody)
+import Data.Abc (AbcNote, AbcRest, AbcTune, Accidental(..), Bar, BarLine, BodyPart(..), Broken(..), SymbolDefinition, Grace, GraceableNote, Header(..), ModifiedKeySignature, Music(..), MusicLine, NoteDuration, Pitch(..), RestOrNote, TempoSignature, TuneBody)
 import Data.Abc.Accidentals as Accidentals
 import Data.Abc.KeySignature (defaultKey, modifiedKeySet, notesInChromaticScale, pitchNumber)
 import Data.Abc.Melody.ChordSymbol (setChordSymbolDurations)
@@ -238,7 +238,7 @@ transformMusic m =
       transformHeader header
 
     ChordSymbol symbol ->
-      handleAccompaniment symbol.name
+      handleAccompaniment symbol
 
     _ ->
       do
@@ -598,18 +598,23 @@ addTempoToState tempoSig tstate  =
 -- | Add the notes that correspond to the chord symbol if we find them
 -- | Note that these are played on a different channel from the main melody
 -- | and they do not contribute to the 'pacing' of the melody proper
-handleAccompaniment :: String -> State TState Unit
+handleAccompaniment :: SymbolDefinition -> State TState Unit
 handleAccompaniment chordSym = do 
   tstate <- get
-  case (lookupChordMidiPitches chordSym tstate.chordMap) of
+  case (lookupChordMidiPitches chordSym.name tstate.chordMap) of
     Just pitches -> do
       let
         config = defaultMidiChordConfig
           { timeOffset = tstate.currentOffset
           , gain = tstate.chordVolume
           , duration = tstate.chordDuration
-          }
-        inote = iNoteAccompaniment config pitches
+          }  
+        duration = 
+          case chordSym.duration of 
+            Nothing -> config.duration 
+            Just noteDur ->  
+              noteDuration tstate.abcTempo noteDur
+        inote = iNoteAccompaniment config duration pitches
         currentBar = tstate.currentBar { iPhrase = (Array.cons inote tstate.currentBar.iPhrase) }
       put 
         tstate
@@ -657,15 +662,15 @@ iNotes offset duration pitches canPhrase =
 
 -- | Generate an intermediate MIDI note destined for the Melody buffer
 -- | but here representing the accompaniment on a different channel
-iNoteAccompaniment :: MidiChordConfig -> NEA.NonEmptyArray Int -> INote
-iNoteAccompaniment config pitches =
-  { channel: config.channel -- the MIDI channel
-  , pitches: pitches -- the MIDI pitch numbers of the chord
-  , timeOffset: config.timeOffset -- the time delay in seconds before the note is played
-  , duration: config.duration -- the duration of the note
-  , gain: config.gain -- The volume of the note
-  , canPhrase: false -- can we form a new phrase at this note?
-  }
+iNoteAccompaniment :: MidiChordConfig -> Number -> NEA.NonEmptyArray Int -> INote
+iNoteAccompaniment config duration pitches =
+    { channel: config.channel -- the MIDI channel
+    , pitches: pitches -- the MIDI pitch numbers of the chord
+    , timeOffset: config.timeOffset -- the time delay in seconds before the note is played
+    , duration -- the MIDI duration of the note
+    , gain: config.gain -- The volume of the note
+    , canPhrase: false -- can we form a new phrase at this note?
+    }
 
 -- | work out the broken rhythm tempo
 brokenTempo :: Int -> Boolean -> Rational
