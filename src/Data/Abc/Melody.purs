@@ -16,7 +16,7 @@ import Data.Abc.Melody.Types
 
 import Audio.SoundFont.Melody (Melody)
 import Audio.SoundFont.Melody.Class (class Playable)
-import Control.Monad.State (State, get, put, execState)
+import Control.Monad.State (State, get, put, modify_, execState)
 import Data.Abc (AbcNote, AbcRest, AbcTune, Accidental(..), Bar, BarLine, BodyPart(..), Broken(..), Grace, GraceableNote, Header(..), ModifiedKeySignature, Music(..), MusicLine, NoteDuration, Pitch(..), RestOrNote, TempoSignature, TuneBody)
 import Data.Abc.Accidentals as Accidentals
 import Data.Abc.KeySignature (defaultKey, modifiedKeySet, notesInChromaticScale, pitchNumber)
@@ -31,16 +31,16 @@ import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray, fromFoldable1, reverse, singleton) as NEA
 import Data.Bifunctor (bimap)
 import Data.Either (Either(..))
-import Data.Foldable (foldl, oneOf)
+import Data.Foldable (foldl, foldM, oneOf)
 import Data.Int (toNumber) as Int
 import Data.List (List(..), (:))
 import Data.List.NonEmpty (NonEmptyList)
 import Data.List.NonEmpty (head, length, tail, toList) as NEL
-import Data.Map (empty)
+import Data.Map (empty, isEmpty)
 import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
 import Data.Rational (Rational, fromInt, toNumber, (%))
 import Data.Tuple (Tuple(..))
-import Prelude (bind, identity, map, not, pure, ($), (&&), (*), (+), (-), (/), (<>), (==), (||), (>))
+import Prelude (Unit, bind, identity, map, not, pure, unit, ($), (&&), (*), (+), (-), (/), (<>), (==), (||), (>))
 import RhythmGuitar.Audio (lookupChordMidiPitches)
 import RhythmGuitar.Types (MidiChordConfig, MidiPitchChordMap, defaultMidiChordConfig)
 
@@ -143,24 +143,22 @@ buildMelody tstate generateIntro =
   in
     buildRepeatedMelody rawMelody repeatState.sections tstate.phraseSize
 
--- | although nominally the returned value held in the State monad is
--- | MidiBars, we don't use it.  Rather we constructb the final value
--- | from the TState itself
-transformTune :: AbcTune -> State TState MidiBars
+-- | We constructb the final value from the TState itself
+transformTune :: AbcTune -> State TState Unit
 transformTune tune =
   -- we don't need to process the initial headers because
   -- they're already adopted in the initial state
   transformBody tune.body
 
-transformBody :: TuneBody -> State TState MidiBars
+transformBody :: TuneBody -> State TState Unit
 transformBody Nil =
-  pure Nil
+  pure unit
 transformBody (p : ps) =
   do
     _ <- transformBodyPart p
     transformBody ps
 
-transformBodyPart :: BodyPart -> State TState MidiBars
+transformBodyPart :: BodyPart -> State TState Unit
 transformBodyPart bodyPart =
   case bodyPart of
     Score bars ->
@@ -168,88 +166,93 @@ transformBodyPart bodyPart =
     BodyInfo header ->
       transformHeader header
 
-transformBarList :: List Bar -> State TState MidiBars
+transformBarList :: List Bar -> State TState Unit
 transformBarList Nil =
   do
-    pure Nil
+    pure unit
 transformBarList (b : bs) =
   do
     _ <- transformBar b
     transformBarList bs
 
-transformBar :: Bar -> State TState MidiBars
+transformBar :: Bar -> State TState Unit
 transformBar bar =
   do
-    -- tstate <- get
+    tstate <- get
     -- save the bar to state
-    _ <- updateState addBarToState bar.startLine
+    _ <- handleBar bar.startLine
     let 
-      _ = setChordSymbolDurations bar.music
-      musicLine = bar.music 
+      musicLine = 
+        if (isEmpty tstate.chordMap) then 
+          bar.music
+        else
+          setChordSymbolDurations bar.music
     transformMusicLine musicLine
 
-transformMusicLine :: MusicLine -> State TState MidiBars
+transformMusicLine :: MusicLine -> State TState Unit
 transformMusicLine Nil =
   do
-    pure Nil
+    pure unit
 transformMusicLine (l : ls) =
   do
     _ <- transformMusic l
     transformMusicLine ls
 
-transformMusic :: Music -> State TState MidiBars
+transformMusic :: Music -> State TState Unit
 transformMusic m =
   case m of
+    
     Note graceableNote ->
-      updateState (addGraceableNoteToState (1 % 1)) graceableNote
+      handleGraceableNote (1 % 1) graceableNote    
 
     Rest r ->
-      updateState (addRestToState (1 % 1)) r
-
+      handleRest (1 % 1) r
+    
     Tuplet t ->
-      updateState (addTupletContentsToState t.maybeGrace (t.signature.q % t.signature.p)) t.restsOrNotes
+      handleTupletContents t.maybeGrace (t.signature.q % t.signature.p) t.restsOrNotes
 
     Chord abcChord ->
       do
         -- set the notes all to start at the same time with the correct duration
-        _ <- updateState (addChordalNotesToState abcChord.duration) abcChord.notes
+        _ <- handleChordalNotes abcChord.duration abcChord.notes
         -- pace by incrementing the offset for the next note
-        updateState incrementTimeOffset fullDuration
+        modify_ (incrementTimeOffset fullDuration)
       where
       first = NEL.head abcChord.notes
       -- we'll pace the chord from the duration of the first note it contains,
       -- modified by the overall chord duration which is the full duration
-      fullDuration = abcChord.duration * first.duration
+      fullDuration = abcChord.duration * first.duration    
 
     BrokenRhythmPair note1 broken note2 ->
       case broken of
         LeftArrow i ->
           do
-            _ <- updateState (addGraceableNoteToState (brokenTempo i false)) note1
-            updateState (addGraceableNoteToState (brokenTempo i true)) note2
+            _ <- handleGraceableNote (brokenTempo i false) note1
+            handleGraceableNote (brokenTempo i true) note2
         RightArrow i ->
           do
-            _ <- updateState (addGraceableNoteToState (brokenTempo i true)) note1
-            updateState (addGraceableNoteToState (brokenTempo i false)) note2
+            _ <- handleGraceableNote (brokenTempo i true) note1
+            handleGraceableNote (brokenTempo i false) note2
 
     Inline header ->
       transformHeader header
 
     ChordSymbol symbol ->
-      updateState addAccompanimentToState symbol.name
+      handleAccompaniment symbol.name
 
     _ ->
       do
-        pure Nil
+        pure unit
 
--- | add a bar to the state.  index it and add it to the growing list of bars
-addBarToState :: TState -> BarLine -> TState
-addBarToState tstate barLine =
+-- | Handle a bar.  index it and add it to the growing list of bars
+handleBar :: BarLine -> State TState Unit
+handleBar barLine = do
+  tstate <- get
   -- the current bar held in state is empty so we coalesce
   if (isBarEmpty tstate.currentBar) then
-    coalesceBar tstate barLine
+    coalesceBar barLine
   -- it's not empty so we initialise the new bar
-  else
+  else do
     let
       currentBar = tstate.currentBar
       repeatState =
@@ -268,7 +271,7 @@ addBarToState tstate barLine =
       rawMelody =
         -- the current bar is not empty so we aggregate the new bar into the track
         currentBar : tstate.rawMelody
-    in
+    put
       tstate
         { currentBar = buildNewBar (currentBar.number + 1) barLine
         , currentBarAccidentals = Accidentals.empty
@@ -279,8 +282,9 @@ addBarToState tstate barLine =
 
 -- | coalesce the new bar from ABC with the current one held in the state
 -- | (which has previously been tested for emptiness)
-coalesceBar :: TState -> BarLine -> TState
-coalesceBar tstate barLine =
+coalesceBar :: BarLine -> State TState Unit
+coalesceBar barLine = do 
+  tstate <- get
   let
     endRepeats = tstate.currentBar.endRepeats + barLine.endRepeats
     startRepeats = tstate.currentBar.startRepeats + barLine.startRepeats
@@ -289,28 +293,28 @@ coalesceBar tstate barLine =
       , startRepeats = startRepeats
       , iteration = barLine.iteration
       }
-  in
+  put
     tstate { currentBar = bar' }
 
 -- | The unit note length and tempo headers affect tempo
 -- | The key signature header affects pitch
 -- | other headers have no effect
 -- | but ABC allows headers to change mid-tune
-transformHeader :: Header -> State TState MidiBars
-transformHeader h =
+transformHeader :: Header -> State TState Unit
+transformHeader h = do 
   case h of
     UnitNoteLength d ->
-      updateState addUnitNoteLenToState d
+      modify_ (addUnitNoteLenToState d)
     Key mks ->
-      updateState addKeySigToState mks
+      modify_ (addKeySigToState mks)
     Tempo t ->
-      updateState addTempoToState t
+      modify_ (addTempoToState t)
     _ ->
-      do
-        pure Nil
+      pure unit
 
-addGraceableNoteToState :: Rational -> TState -> GraceableNote -> TState
-addGraceableNoteToState tempoModifier tstate graceableNote =
+handleGraceableNote :: Rational -> GraceableNote -> State TState Unit
+handleGraceableNote tempoModifier graceableNote = do
+  tstate <- get
   let
     abcNote = graceableNote.abcNote
     Tuple notes newTie =
@@ -325,19 +329,19 @@ addGraceableNoteToState tempoModifier tstate graceableNote =
       }
     -- if the last note was tied, we need its duration to be able to pace the next note
     lastTiedNoteDuration = maybe (0 % 1) _.abcNote.duration tstate.lastNoteTied
-  in
-    if (isJust newTie) then
-      tstate'
-    else
-      incrementTimeOffset tstate' ((abcNote.duration + lastTiedNoteDuration) * tempoModifier)
-
--- | Add a rest note to state.  Rests are now indicated by a note of zero pitch
+  if (isJust newTie) then
+      put tstate'
+  else do 
+    put $ incrementTimeOffset ((abcNote.duration + lastTiedNoteDuration) * tempoModifier) tstate'
+    
+-- | Handle a rest note.  Rests are now indicated by a note of zero pitch
 -- | this allows the phrasing module to schedule when the notes are played
--- | properly in each sub phrase
+-- | properly in ach sub phrase
 -- | It is made possible by the latest master of purescript-soundfonts which
 -- | now considers such a note to indicate a rest
-addRestToState :: Rational -> TState -> AbcRest -> TState
-addRestToState tempoModifier tstate rest =
+handleRest :: Rational -> AbcRest -> State TState Unit
+handleRest tempoModifier rest = do
+  tstate <- get
   let
     note = emitRest tempoModifier tstate rest
     notes = Array.cons note tstate.currentBar.iPhrase
@@ -346,17 +350,16 @@ addRestToState tempoModifier tstate rest =
       { currentBar = currentBar
       , chordSymbolIsLastItem = false
       }
-  in
-    incrementTimeOffset tstate' (rest.duration * tempoModifier)
+    newState = incrementTimeOffset (rest.duration * tempoModifier) tstate'
+  put newState
 
--- | tuplets can now contain rests
-addRestOrNoteToState :: Rational -> TState -> RestOrNote -> TState
-addRestOrNoteToState tempoModifier tstate restOrNote =
+handleRestOrNote :: Rational -> Unit -> RestOrNote -> State TState Unit
+handleRestOrNote tempoModifier _ restOrNote =
   case restOrNote of
     Left r ->
-      addRestToState tempoModifier tstate r
+      handleRest tempoModifier r
     Right n ->
-      addGraceableNoteToState tempoModifier tstate n
+      handleGraceableNote tempoModifier n
 
 -- | process the incoming note, accounting for the fact that the previous note may have been tied.
 -- |
@@ -394,7 +397,7 @@ processNoteWithTie tempoModifier tstate graceableNote =
             phraseFaultyTie = emitGracesAndNote tempoModifier tstate lastNote
             -- prepare the phrase for this note if we need it, taking account
             -- of the increased time offset from the faulty grace we've just emitted
-            tstate' = incrementTimeOffset tstate graceableNote.abcNote.duration
+            tstate' = incrementTimeOffset graceableNote.abcNote.duration tstate
             phrase = emitGracesAndNote tempoModifier tstate' graceableNote
           in
             if graceableNote.abcNote.tied then
@@ -446,15 +449,16 @@ emitGracesAndNote tempoModifier tstate graceableNote =
   in
     Array.cons mainNote graceNotesPhrase
 
--- | Add notes from a chord to state
-addChordalNotesToState :: Rational -> TState -> NonEmptyList AbcNote -> TState
-addChordalNotesToState tempoModifier tstate abcNotes =
+-- | handle notes from a chord
+handleChordalNotes :: Rational -> NonEmptyList AbcNote -> State TState Unit
+handleChordalNotes tempoModifier abcNotes = do 
+  tstate <- get 
   let
     notes =
       processChordalNotes tempoModifier tstate abcNotes true
     barAccidentals =
       foldl addNoteToBarAccidentals tstate.currentBarAccidentals abcNotes
-  in
+  put 
     tstate
       { currentBar = tstate.currentBar { iPhrase = notes }
       , currentBarAccidentals = barAccidentals
@@ -545,34 +549,34 @@ lastDuration :: Array INote -> Number
 lastDuration notes =
   maybe 0.0 _.duration $ Array.last notes
 
--- | Add the contents of a tuplet to state.  This is an optional grace note
+-- | Handle the contents of a tuplet.  This is an optional grace note
 -- | plus a list of either rests or notes.
 -- | tempo modifier is the modification of the tempo indicate donly by the
 -- | tuplet signature (e.g. 3 notes in the time of two)
-addTupletContentsToState :: Maybe Grace -> Rational -> TState -> NonEmptyList RestOrNote -> TState
-addTupletContentsToState mGrace tempoModifier tstate restsOrNotes =
+handleTupletContents :: Maybe Grace -> Rational -> NonEmptyList RestOrNote -> State TState Unit
+handleTupletContents mGrace tempoModifier restsOrNotes =
   let
     -- move the grace notes from external to internal
     gracedRestsOrNotes = gracifyFirstNote mGrace restsOrNotes
   in
-    foldl (addRestOrNoteToState tempoModifier) tstate gracedRestsOrNotes
+    foldM (handleRestOrNote tempoModifier) unit gracedRestsOrNotes
 
 -- | increment the time offset to pace the next note
-incrementTimeOffset :: TState -> Rational -> TState
-incrementTimeOffset tstate duration =
+incrementTimeOffset :: Rational -> TState -> TState
+incrementTimeOffset duration tstate =
   let
     offset = tstate.currentOffset + (noteDuration tstate.abcTempo duration)
   in
     tstate { currentOffset = offset }
 
 -- | cater for a change in key signature
-addKeySigToState :: TState -> ModifiedKeySignature -> TState
-addKeySigToState tstate mks =
+addKeySigToState :: ModifiedKeySignature -> TState -> TState
+addKeySigToState mks tstate =
   tstate { modifiedKeySignature = mks }
 
 -- | cater for a change in unit note length
-addUnitNoteLenToState :: TState -> Rational -> TState
-addUnitNoteLenToState tstate d =
+addUnitNoteLenToState :: Rational -> TState -> TState
+addUnitNoteLenToState d tstate =
   let
     abcTempo' = tstate.abcTempo { unitNoteLength = d }
   in
@@ -580,8 +584,8 @@ addUnitNoteLenToState tstate d =
 
 -- | cater for a change in unit note length
 -- | this not only changes state but adds a change tempo message
-addTempoToState :: TState -> TempoSignature -> TState
-addTempoToState tstate tempoSig =
+addTempoToState :: TempoSignature -> TState -> TState
+addTempoToState tempoSig tstate  =
   let
     abcTempo' =
       tstate.abcTempo
@@ -594,10 +598,11 @@ addTempoToState tstate tempoSig =
 -- | Add the notes that correspond to the chord symbol if we find them
 -- | Note that these are played on a different channel from the main melody
 -- | and they do not contribute to the 'pacing' of the melody proper
-addAccompanimentToState :: TState -> String -> TState
-addAccompanimentToState tstate chordSym =
+handleAccompaniment :: String -> State TState Unit
+handleAccompaniment chordSym = do 
+  tstate <- get
   case (lookupChordMidiPitches chordSym tstate.chordMap) of
-    Just pitches ->
+    Just pitches -> do
       let
         config = defaultMidiChordConfig
           { timeOffset = tstate.currentOffset
@@ -606,13 +611,13 @@ addAccompanimentToState tstate chordSym =
           }
         inote = iNoteAccompaniment config pitches
         currentBar = tstate.currentBar { iPhrase = (Array.cons inote tstate.currentBar.iPhrase) }
-      in
+      put 
         tstate
           { currentBar = currentBar
           , chordSymbolIsLastItem = true
           }
     _ ->
-      tstate
+      put tstate
 
 -- utility functions
 
@@ -675,17 +680,6 @@ isBarEmpty :: MidiBar -> Boolean
 isBarEmpty mb =
   Array.null mb.iPhrase
 
--- | generic function to update the State
--- | a is an ABC value
--- | f is a function that transforms the ABC value and adds it to the state
-updateState :: forall a. (TState -> a -> TState) -> a -> State TState MidiBars
-updateState f abc =
-  do
-    tstate <- get
-    let
-      tstate' = f tstate abc
-    _ <- put tstate'
-    pure tstate.rawMelody
 
 -- | Curtail the duration of the note by taking account of any grace notes
 -- | that it may have

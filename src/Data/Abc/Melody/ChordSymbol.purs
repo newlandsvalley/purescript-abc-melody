@@ -3,7 +3,7 @@ module Data.Abc.Melody.ChordSymbol (setChordSymbolDurations) where
 import Data.Abc (AbcChord, AbcTuplet, Music(..), MusicLine, NoteDuration, RestOrNote)
 import Data.Either (Either(..))
 import Data.Foldable (foldr)
-import Data.List (List(..), (:), reverse)
+import Data.List (List(..), (:))
 import Data.List.NonEmpty (head) as NEL
 import Data.Maybe (Maybe(..))
 import Data.Rational (fromInt, (%))
@@ -14,7 +14,7 @@ import Prelude ((+), (*), (<<<))
 
 setChordSymbolDurations :: MusicLine -> MusicLine 
 setChordSymbolDurations  =
-  reverse <<< fst <<< setChordSymbolDurationsWork
+  fst <<< setChordSymbolDurationsWork
 
 setChordSymbolDurationsWork :: MusicLine -> Tuple MusicLine NoteDuration
 setChordSymbolDurationsWork =
