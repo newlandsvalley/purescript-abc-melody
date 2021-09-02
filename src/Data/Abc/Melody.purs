@@ -20,6 +20,7 @@ import Control.Monad.State (State, get, put, execState)
 import Data.Abc (AbcNote, AbcRest, AbcTune, Accidental(..), Bar, BarLine, BodyPart(..), Broken(..), Grace, GraceableNote, Header(..), ModifiedKeySignature, Music(..), MusicLine, NoteDuration, Pitch(..), RestOrNote, TempoSignature, TuneBody)
 import Data.Abc.Accidentals as Accidentals
 import Data.Abc.KeySignature (defaultKey, modifiedKeySet, notesInChromaticScale, pitchNumber)
+import Data.Abc.Melody.ChordSymbol (setChordSymbolDurations)
 import Data.Abc.Melody.Intro (appendIntroSections)
 import Data.Abc.Melody.RepeatBuilder (buildRepeatedMelody)
 import Data.Abc.Melody.RepeatSections (initialRepeatState, indexBar, finalBar)
@@ -179,9 +180,13 @@ transformBarList (b : bs) =
 transformBar :: Bar -> State TState MidiBars
 transformBar bar =
   do
+    -- tstate <- get
     -- save the bar to state
     _ <- updateState addBarToState bar.startLine
-    transformMusicLine bar.music
+    let 
+      _ = setChordSymbolDurations bar.music
+      musicLine = bar.music 
+    transformMusicLine musicLine
 
 transformMusicLine :: MusicLine -> State TState MidiBars
 transformMusicLine Nil =
@@ -231,7 +236,7 @@ transformMusic m =
       transformHeader header
 
     ChordSymbol symbol ->
-      updateState addAccompanimentToState symbol
+      updateState addAccompanimentToState symbol.name
 
     _ ->
       do
@@ -243,7 +248,7 @@ addBarToState tstate barLine =
   -- the current bar held in state is empty so we coalesce
   if (isBarEmpty tstate.currentBar) then
     coalesceBar tstate barLine
-  -- it's not emmpty so we initialise the new bar
+  -- it's not empty so we initialise the new bar
   else
     let
       currentBar = tstate.currentBar
@@ -724,7 +729,7 @@ noteDuration abcTempo noteLength =
   in
     toNumber $ beatLength * noteLength / bps
 
--- r| return true if two tied note can be tied legitimately to the following note
+-- | return true if two tied note can be tied legitimately to the following note
 -- | the notes must have the same pitch and the following note my not be graced
 legitimateTie :: TState -> GraceableNote -> GraceableNote -> Boolean
 legitimateTie tstate tiedNote nextNote =
