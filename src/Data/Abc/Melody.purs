@@ -102,8 +102,9 @@ type TState =
   , abcTempo :: AbcTempo -- the current tempo
   , phraseSize :: Number -- max size of a MIDI phrase
   , chordMap :: MidiPitchChordMap -- map of chord symbol to note pitches
-  , chordDuration :: Number -- the duration of any chord (in seconds) in the accompaniment
-  , chordVolume :: Number -- the volume (gain) of a chord (between 0 and 1)
+  , chordSymbolDurationDefault :: Number -- the default duration of any chord (in seconds) in the accompaniment
+  , chordSymbolVolume :: Number -- the volume (gain) of a chord symbol (between 0 and 1)
+  , chordSymbolLastNote :: Maybe INote -- the last chord symbol note generated
   , chordSymbolIsLastItem :: Boolean -- true if the last Music item encountered was a chord symbol
   , currentBar :: MidiBar -- the current bar being translated
   , currentBarAccidentals :: Accidentals.Accidentals -- can't put this in MidiBar because of typeclass constraints
@@ -237,8 +238,14 @@ transformMusic m =
     Inline header ->
       transformHeader header
 
-    ChordSymbol symbol ->
-      handleAccompaniment symbol
+    ChordSymbol symbol -> do 
+      -- we only bother with generating accompaniment from chord symbols
+      -- if a chord map is supplied
+      tstate <- get
+      if (isEmpty tstate.chordMap) then 
+        pure unit 
+      else
+        handleAccompaniment symbol
 
     _ ->
       do
@@ -606,8 +613,8 @@ handleAccompaniment chordSym = do
       let
         config = defaultMidiChordConfig
           { timeOffset = tstate.currentOffset
-          , gain = tstate.chordVolume
-          , duration = tstate.chordDuration
+          , gain = tstate.chordSymbolVolume
+          , duration = tstate.chordSymbolDurationDefault
           }  
         duration = 
           case chordSym.duration of 
@@ -806,15 +813,18 @@ initialState props tune =
   let
     abcTempo = getAbcTempo tune
     keySignature = fromMaybe defaultKey (getKeySig tune)
-    -- set chord duration to the duration of a single beat
-    chordDuration = 60.0 / (Int.toNumber abcTempo.bpm)
+    -- set the default chord duration to the duration of a single beat
+    -- this will be over-ridden (we hope) when we calulate the duration
+    -- given by the structure of the melody
+    chordSymbolDurationDefault = 60.0 / (Int.toNumber abcTempo.bpm)
   in
     { modifiedKeySignature: keySignature
     , abcTempo
     , phraseSize: props.phraseSize
     , chordMap: props.chordMap
-    , chordDuration
-    , chordVolume: 0.15
+    , chordSymbolDurationDefault
+    , chordSymbolVolume: 0.15
+    , chordSymbolLastNote: Nothing
     , chordSymbolIsLastItem: false
     , currentBar: initialBar
     , currentBarAccidentals: Accidentals.empty
