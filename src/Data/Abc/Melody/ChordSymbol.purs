@@ -1,14 +1,13 @@
 module Data.Abc.Melody.ChordSymbol (setChordSymbolDurations) where
 
-import Data.Abc (AbcChord, AbcTuplet, Music(..), MusicLine, NoteDuration, RestOrNote)
-import Data.Either (Either(..))
+import Data.Abc (Music(..), MusicLine, NoteDuration)
+import Data.Abc.Metadata (chordDuration, tupletDuration)
 import Data.Foldable (foldr)
 import Data.List (List(..), (:))
-import Data.List.NonEmpty (head) as NEL
 import Data.Maybe (Maybe(..))
-import Data.Rational (fromInt, (%))
+import Data.Rational (fromInt)
 import Data.Tuple (Tuple(..), fst)
-import Prelude ((+), (*), (<<<))
+import Prelude ((+), (<<<))
 
 -- import Debug (spy)
 
@@ -51,25 +50,3 @@ setChordSymbolDurationsWork =
 
         x -> 
           Tuple (x : acc) duration
-
-chordDuration :: AbcChord -> NoteDuration 
-chordDuration chord = 
-  (NEL.head chord.notes).duration * chord.duration
-
-restOrNoteDuration :: RestOrNote -> NoteDuration
-restOrNoteDuration =
-  case _ of
-    Left r ->
-      r.duration
-    Right gn ->
-      gn.abcNote.duration 
-
-tupletDuration :: AbcTuplet -> NoteDuration 
-tupletDuration t = 
-  modifier * foldr adder (fromInt 0) t.restsOrNotes 
-
-  where 
-    adder :: RestOrNote -> NoteDuration -> NoteDuration
-    adder rorn acc = restOrNoteDuration rorn + acc 
-    
-    modifier = t.signature.q % t.signature.p
