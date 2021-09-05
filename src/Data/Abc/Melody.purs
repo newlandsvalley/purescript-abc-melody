@@ -20,13 +20,14 @@ import Control.Monad.State (State, get, put, modify_, execState)
 import Data.Abc (AbcNote, AbcRest, AbcTune, Accidental(..), Bar, BarLine, BodyPart(..), Broken(..), SymbolDefinition, Grace, GraceableNote, Header(..), ModifiedKeySignature, Music(..), MusicLine, NoteDuration, Pitch(..), RestOrNote, TempoSignature, TuneBody)
 import Data.Abc.Accidentals as Accidentals
 import Data.Abc.KeySignature (defaultKey, modifiedKeySet, notesInChromaticScale, pitchNumber)
-import Data.Abc.Melody.ChordSymbol (setChordSymbolDurations)
+import Data.Abc.Melody.ChordSymbol (expandChordSymbols)
 import Data.Abc.Melody.Intro (appendIntroSections)
 import Data.Abc.Melody.RepeatBuilder (buildRepeatedMelody)
 import Data.Abc.Melody.RepeatSections (initialRepeatState, indexBar, finalBar)
+import Data.Abc.Melody.Utils (playedNoteDuration)
 import Data.Abc.Metadata (dotFactor, getKeySig)
 import Data.Abc.Repeats.Types (RepeatState)
-import Data.Abc.Tempo (AbcTempo, getAbcTempo, setBpm, beatsPerSecond)
+import Data.Abc.Tempo (AbcTempo, getAbcTempo, setBpm)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray, fromFoldable1, reverse, singleton) as NEA
 import Data.Bifunctor (bimap)
@@ -38,7 +39,7 @@ import Data.List.NonEmpty (NonEmptyList)
 import Data.List.NonEmpty (head, length, tail, toList) as NEL
 import Data.Map (empty, isEmpty)
 import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
-import Data.Rational (Rational, fromInt, toNumber, (%))
+import Data.Rational (Rational, fromInt, (%))
 import Data.Tuple (Tuple(..))
 import Prelude (Unit, bind, identity, map, not, pure, unit, ($), (&&), (*), (+), (-), (/), (<>), (==), (||), (>))
 import RhythmGuitar.Audio (lookupChordMidiPitches)
@@ -104,8 +105,8 @@ type TState =
   , chordMap :: MidiPitchChordMap -- map of chord symbol to note pitches
   , chordSymbolDurationDefault :: Number -- the default duration of any chord (in seconds) in the accompaniment
   , chordSymbolVolume :: Number -- the volume (gain) of a chord symbol (between 0 and 1)
-  , chordSymbolLastNote :: Maybe INote -- the last chord symbol note generated
   , chordSymbolIsLastItem :: Boolean -- true if the last Music item encountered was a chord symbol
+  , chordSymbolLastProcessed :: Maybe SymbolDefinition -- the last chord symbol processed
   , currentBar :: MidiBar -- the current bar being translated
   , currentBarAccidentals :: Accidentals.Accidentals -- can't put this in MidiBar because of typeclass constraints
   -- any notes marked explicitly as accidentals in the current bar
@@ -116,7 +117,7 @@ type TState =
   }
 
 -- | Take the completed tune which exists in tstats largely as a flat
--- | sequence of  midi bars and build a phrased meldody taking account
+-- | sequence of INotes and build a phrased melody taking account
 -- | od all repeated sections and so on.
 buildMelody :: TState -> Boolean -> Melody
 buildMelody tstate generateIntro =
@@ -132,10 +133,6 @@ buildMelody tstate generateIntro =
       else
         finalRepeatState
     -- ensure we incorporate the very last bar
-    {-
-    tstate' = tstate { rawMelody = tstate.currentBar : tstate.rawMelody
-                     , repeatState = repeatState }
-    -}
     rawMelody = currentBar : tstate.rawMelody
   -- foo1 = spy "final repeat sections"  finalRepeatState
   -- foo2 = spy "repeat sections after intro"  tstate'.repeatState.sections
@@ -179,21 +176,22 @@ transformBarList (b : bs) =
 transformBar :: Bar -> State TState Unit
 transformBar bar =
   do
-    tstate <- get
-    -- save the bar to state
     _ <- handleBar bar.startLine
+    tstate <- get
+    -- rewrite the music line so as to expand the chord symbols
     let 
       musicLine = 
         if (isEmpty tstate.chordMap) then 
           bar.music
-        else
-          setChordSymbolDurations bar.music
-    transformMusicLine musicLine
+        else 
+          expandChordSymbols tstate.chordSymbolLastProcessed bar.music
+          
+    transformMusicLine musicLine   
+    
 
 transformMusicLine :: MusicLine -> State TState Unit
 transformMusicLine Nil =
-  do
-    pure unit
+  pure unit
 transformMusicLine (l : ls) =
   do
     _ <- transformMusic l
@@ -244,8 +242,8 @@ transformMusic m =
       tstate <- get
       if (isEmpty tstate.chordMap) then 
         pure unit 
-      else
-        handleAccompaniment symbol
+      else 
+        handleAccompaniment symbol 
 
     _ ->
       do
@@ -500,7 +498,7 @@ emitNotePlus tempoModifier tstate abcNote extraOffset canPhrase =
     pitch =
       toMidiPitch tstate.modifiedKeySignature tstate.currentBarAccidentals abcNote
     duration =
-      noteDuration tstate.abcTempo (abcNote.duration * tempoModifier)
+      playedNoteDuration tstate.abcTempo (abcNote.duration * tempoModifier)
   in
     iNote (tstate.currentOffset + extraOffset) duration pitch canPhrase
 
@@ -516,7 +514,7 @@ emitNotes tempoModifier tstate abcNotes canPhrase =
         map (toMidiPitch tstate.modifiedKeySignature tstate.currentBarAccidentals) abcNotes
     -- for the duration, take the first note in the chord 
     duration =
-      noteDuration tstate.abcTempo ((NEL.head abcNotes).duration * tempoModifier)
+      playedNoteDuration tstate.abcTempo ((NEL.head abcNotes).duration * tempoModifier)
   in
     iNotes tstate.currentOffset duration pitches canPhrase
 
@@ -525,7 +523,7 @@ emitRest :: Rational -> TState -> AbcRest -> INote
 emitRest tempoModifier tstate rest =
   let
     duration =
-      noteDuration tstate.abcTempo (rest.duration * tempoModifier)
+      playedNoteDuration tstate.abcTempo (rest.duration * tempoModifier)
   in
     iNote tstate.currentOffset duration 0 true
 
@@ -572,7 +570,7 @@ handleTupletContents mGrace tempoModifier restsOrNotes =
 incrementTimeOffset :: Rational -> TState -> TState
 incrementTimeOffset duration tstate =
   let
-    offset = tstate.currentOffset + (noteDuration tstate.abcTempo duration)
+    offset = tstate.currentOffset + (playedNoteDuration tstate.abcTempo duration)
   in
     tstate { currentOffset = offset }
 
@@ -620,13 +618,14 @@ handleAccompaniment chordSym = do
           case chordSym.duration of 
             Nothing -> config.duration 
             Just noteDur ->  
-              noteDuration tstate.abcTempo noteDur
+              playedNoteDuration tstate.abcTempo noteDur
         inote = iNoteAccompaniment config duration pitches
         currentBar = tstate.currentBar { iPhrase = (Array.cons inote tstate.currentBar.iPhrase) }
       put 
         tstate
           { currentBar = currentBar
           , chordSymbolIsLastItem = true
+          , chordSymbolLastProcessed = Just chordSym
           }
     _ ->
       put tstate
@@ -727,13 +726,6 @@ gracifyFirstNote maybeGrace restsOrNotes =
   in
     Cons (f hd) tl
 
-noteDuration :: AbcTempo -> Rational -> Number
-noteDuration abcTempo noteLength =
-  let
-    bps = beatsPerSecond abcTempo
-    beatLength = abcTempo.unitNoteLength / (1 % 4)
-  in
-    toNumber $ beatLength * noteLength / bps
 
 -- | return true if two tied note can be tied legitimately to the following note
 -- | the notes must have the same pitch and the following note my not be graced
@@ -824,8 +816,8 @@ initialState props tune =
     , chordMap: props.chordMap
     , chordSymbolDurationDefault
     , chordSymbolVolume: 0.15
-    , chordSymbolLastNote: Nothing
     , chordSymbolIsLastItem: false
+    , chordSymbolLastProcessed: Nothing
     , currentBar: initialBar
     , currentBarAccidentals: Accidentals.empty
     , currentOffset: 0.0

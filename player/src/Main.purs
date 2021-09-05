@@ -27,7 +27,7 @@ main = HA.runHalogenAff do
   instruments <- H.liftAff loadInstruments 
   chordShapes <- H.liftAff loadDefaultChordShapes
   let
-    abcText = fjällnäs --- ossian -- augustsson
+    abcText = delsboPolska -- fjällnäs --- ossian -- augustsson
     etune = parse abcText 
     chordMap = buildMidiChordMap chordShapes
   body <- HA.awaitBody
@@ -79,6 +79,7 @@ ossian =
     <> "|: D2F A2d f2a | a2g efg f3 | efg f2d e2c |1,3 ABc d2A FAF :|2,4 ABc d6 :|\r\n"
     <> "|: {c}B2A Bd2 c2B | A2a faf dfd | A2g ege cec |1,3 A2a fdf d2c :|2,4 ABc d6 :|\r\n"
 
+-- simple example with steady chords
 fjällnäs :: String
 fjällnäs =
   "X:1\r\n"
@@ -89,3 +90,17 @@ fjällnäs =
     <> "K:G\r\n"
     <> " \"G\"G2G>B \"D7\"A>F | \"G\"G2B>dg2 | \"Am\"a2a>g \"D7\"fe/f/ |1 \"G\"g2b>g \"D7\"d>B :|2 \"G\"g2g4 |]\r\n"
     <> "|: \"G\"d2B>d g>f | \"C\"e2e>dc2 | \"D7\"a2a>g fe/f/ |1 \"G\"g2b>g \"D7\"d>B :|2 \"G\"g2g4 |]\r\n"
+
+-- example with chords with gaps in some bars
+delsboPolska :: String 
+delsboPolska = 
+  "X: 1\r\n"
+    <> "T: Delsbopolska efter Carl Sved\r\n"
+    <> "R: Polska\r\n"
+    <> "M: 3/4\r\n"
+    <> "L: 1/8\r\n"
+    <> "K: C\r\n"
+    <> " \"C\" c2 cd ef | gg/a/ ge ca | \"F\" a>g \"Em\" ge \"Am\" c2 | \"Dm\" d/c/B/c/ de fd | \"G\" cB/c/ d/c/B/A/ G2 |\r\n"
+    <> " \"C\" c2 cd ef | gg/a/ ge ca | \"F\" a>g \"Em\" ge \"Am\" c2 | \"Dm\" d/c/B/c/ de fd | \"G\" c/B/A/B/ d2 \"C\" c2 :|\r\n"
+    <> "|: \"C\" e2 ed cB | \"F\" d/c/B/c/ A4 | \"Dm\" ff/g/ fe dc | \"G\" cB/c/ d/c/B/A/ G2 |\r\n"
+    <> " \"C\" e2 ed \"C/E\" cB | \"F\" d/c/B/c/ A4 | \"Dm\" ff/g/ fe dc | \"G\" c/B/A/B/ d2 \"C\" c2 :|]\r\n"
