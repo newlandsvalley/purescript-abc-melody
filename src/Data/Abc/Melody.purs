@@ -24,10 +24,9 @@ import Data.Abc.Melody.ChordSymbol (expandChordSymbols)
 import Data.Abc.Melody.Intro (appendIntroSections)
 import Data.Abc.Melody.RepeatBuilder (buildRepeatedMelody)
 import Data.Abc.Melody.RepeatSections (initialRepeatState, indexBar, finalBar)
-import Data.Abc.Melody.Utils (playedNoteDuration)
 import Data.Abc.Metadata (dotFactor, getKeySig)
 import Data.Abc.Repeats.Types (RepeatState)
-import Data.Abc.Tempo (AbcTempo, getAbcTempo, setBpm)
+import Data.Abc.Tempo (AbcTempo, getAbcTempo, setBpm, playedNoteDuration)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray, fromFoldable1, reverse, singleton) as NEA
 import Data.Bifunctor (bimap)
