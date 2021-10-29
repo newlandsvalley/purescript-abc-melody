@@ -5,8 +5,6 @@ module Data.Abc.Melody
   , PlayableAbcProperties
   , defaultPlayableAbcProperties
   , toPlayableMelody
-  , toMidiPitch
-  , midiPitchOffset
   ) where
 
 -- | Build a phrased, playable melody directly from a monophonic ABC Score
@@ -17,13 +15,14 @@ import Data.Abc.Melody.Types
 import Audio.SoundFont.Melody (Melody)
 import Audio.SoundFont.Melody.Class (class Playable)
 import Control.Monad.State (State, get, put, modify_, execState)
-import Data.Abc (AbcNote, AbcRest, AbcTune, Accidental(..), Bar, BarLine, BodyPart(..), Broken(..), SymbolDefinition, Grace, GraceableNote, Header(..), ModifiedKeySignature, Music(..), MusicLine, NoteDuration, Pitch(..), RestOrNote, TempoSignature, TuneBody)
+import Data.Abc (AbcNote, AbcRest, AbcTune, Accidental(..), Bar, BarLine, BodyPart(..), Broken(..), SymbolDefinition, Grace, GraceableNote, Header(..), ModifiedKeySignature, Music(..), MusicLine, NoteDuration, RestOrNote, TempoSignature, TuneBody)
 import Data.Abc.Accidentals as Accidentals
-import Data.Abc.KeySignature (defaultKey, modifiedKeySet, notesInChromaticScale, pitchNumber)
+import Data.Abc.KeySignature (defaultKey)
 import Data.Abc.Melody.ChordSymbol (expandChordSymbols)
 import Data.Abc.Melody.Intro (appendIntroSections)
 import Data.Abc.Melody.RepeatBuilder (buildRepeatedMelody)
 import Data.Abc.Melody.RepeatSections (initialRepeatState, indexBar, finalBar)
+import Data.Abc.Midi.Pitch (toMidiPitch)
 import Data.Abc.Metadata (dotFactor, getKeySig)
 import Data.Abc.Repeats.Types (RepeatState)
 import Data.Abc.Tempo (AbcTempo, getAbcTempo, setBpm, playedNoteDuration)
@@ -31,7 +30,7 @@ import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray, fromFoldable1, reverse, singleton) as NEA
 import Data.Bifunctor (bimap)
 import Data.Either (Either(..))
-import Data.Foldable (foldl, foldM, oneOf)
+import Data.Foldable (foldl, foldM)
 import Data.Int (toNumber) as Int
 import Data.List (List(..), (:))
 import Data.List.NonEmpty (NonEmptyList)
@@ -726,56 +725,15 @@ gracifyFirstNote maybeGrace restsOrNotes =
     Cons (f hd) tl
 
 
--- | return true if two tied note can be tied legitimately to the following note
+-- | return true if two tied notes can be tied legitimately to the following note
 -- | the notes must have the same pitch and the following note my not be graced
 legitimateTie :: TState -> GraceableNote -> GraceableNote -> Boolean
 legitimateTie tstate tiedNote nextNote =
-  ( midiPitchOffset tiedNote.abcNote tstate.modifiedKeySignature tstate.currentBarAccidentals ==
-      midiPitchOffset nextNote.abcNote tstate.modifiedKeySignature tstate.currentBarAccidentals
+  ( toMidiPitch tstate.modifiedKeySignature tstate.currentBarAccidentals tiedNote.abcNote ==
+      toMidiPitch  tstate.modifiedKeySignature tstate.currentBarAccidentals nextNote.abcNote
   )
     &&
       isNothing nextNote.maybeGrace
-
--- | Convert an ABC note pitch to a MIDI pitch.
--- |
--- | AbcNote - the note in question
--- | ModifiedKeySignature - the key signature (possibly modified by extra accidentals)
--- | Accidentals - any notes in this bar which have previously been set explicitly to an accidental which are thus inherited by this note
--- | MidiPitch - the resulting pitch of the MIDI note
-toMidiPitch :: ModifiedKeySignature -> Accidentals.Accidentals -> AbcNote -> MidiPitch
-toMidiPitch mks barAccidentals n =
-  (n.octave * notesInChromaticScale) + midiPitchOffset n mks barAccidentals
-
--- | convert an AbcNote (pich class and accidental) to a pitch offset in a chromatic scale
-midiPitchOffset :: AbcNote -> ModifiedKeySignature -> Accidentals.Accidentals -> Int
-midiPitchOffset n mks barAccidentals =
-  let
-    inBarAccidental =
-      Accidentals.lookup n.pitchClass barAccidentals
-
-    inKeyAccidental =
-      -- accidentalImplicitInKey n.pitchClass mks
-      Accidentals.implicitInKeySet n.pitchClass (modifiedKeySet mks)
-
-    -- look first for an explicit note accidental, then for an explicit for the same note that occurred earlier in the bar and
-    -- finally look for an implicit accidental attached to this key signature
-    accidental =
-      case n.accidental of
-        Implicit ->
-          fromMaybe Natural $ oneOf (inBarAccidental : inKeyAccidental : Nil)
-        _ -> -- explict
-          n.accidental
-
-    -- the lookup pattern just uses sharps or flats (if there) or the empty String if not
-    {- what is this for?
-    accidentalPattern =
-      Canonical.keySignatureAccidental accidental
-    -}
-
-    pattern =
-      Pitch { pitchClass: n.pitchClass, accidental: accidental }
-  in
-    pitchNumber pattern
 
 -- | The very first bar has a default tempo as the only message
 initialBar :: MidiBar
