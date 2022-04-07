@@ -1,4 +1,12 @@
-module Data.Abc.Melody.Types where
+module Data.Abc.Melody.Types 
+  ( INote
+  , IPhrase
+  , IMelody
+  , MidiBar
+  , MidiBars 
+  , Label (..)
+  , module Exports
+  ) where
 
 import Data.Abc (Volta)
 import Data.Array.NonEmpty (NonEmptyArray)
@@ -6,6 +14,7 @@ import Data.List (List)
 import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe)
 import Prelude (class Eq, class Show)
+import RhythmGuitar.Types (MidiPitch, Pitches, MidiPitchChordMap) as Exports
 
 -- | An intermediate note representation
 -- | This represents a single note if pitches is a singleton 
