@@ -108,7 +108,7 @@ abcString =
 
 Notice that the sample ABC tune has chord symbols which were not heard in the example above.  ```abc-melody``` allows for these chords to be heard, played (in this instance) on a MIDI steel guitar. The melody itself plays on channel 0 and the chords on channel 1, which means that you have to load both the ```AcousticGrandPiano``` and  ```AcousticGuitarSteel``` soundfonts.
 
-Firstly, you must import from the '``rhythm-guitar``` library:
+Firstly, you must import from the ```rhythm-guitar``` library:
 
 ```purs
 import RhythmGuitar.Audio (buildMidiChordMap)
