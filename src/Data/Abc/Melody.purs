@@ -17,15 +17,15 @@ import Audio.SoundFont.Melody.Class (class Playable)
 import Control.Monad.State (State, get, put, modify_, execState)
 import Data.Abc (AbcNote, AbcRest, AbcTune, Accidental(..), Bar, BarLine, BodyPart(..), Broken(..), SymbolDefinition, Grace, GraceableNote, Header(..), ModifiedKeySignature, Music(..), MusicLine, NoteDuration, RestOrNote, TempoSignature, TuneBody)
 import Data.Abc.Accidentals as Accidentals
-import Data.Abc.KeySignature (defaultKey)
+import Data.Abc.KeySignature (defaultKey, getKeySig)
 import Data.Abc.Melody.ChordSymbol (expandChordSymbols)
 import Data.Abc.Melody.Intro (appendIntroSections)
 import Data.Abc.Melody.RepeatBuilder (buildRepeatedMelody)
 import Data.Abc.Melody.RepeatSections (initialRepeatState, indexBar, finalBar)
 import Data.Abc.Midi.Pitch (toMidiPitch)
-import Data.Abc.Metadata (dotFactor, getKeySig)
 import Data.Abc.Repeats.Types (RepeatState)
 import Data.Abc.Tempo (AbcTempo, getAbcTempo, setBpm, playedNoteDuration)
+import Data.Abc.Utils (dotFactor)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray, fromFoldable1, reverse, singleton) as NEA
 import Data.Bifunctor (bimap)

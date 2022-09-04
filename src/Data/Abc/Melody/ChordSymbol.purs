@@ -2,7 +2,7 @@ module Data.Abc.Melody.ChordSymbol
   ( expandChordSymbols) where
 
 import Data.Abc (Music(..), MusicLine, NoteDuration, SymbolDefinition)
-import Data.Abc.Metadata (chordDuration, tupletDuration)
+import Data.Abc.Utils (chordDuration, tupletDuration)
 import Data.Foldable (foldr)
 import Data.List (List(..), (:))
 import Data.Maybe (Maybe(..))
