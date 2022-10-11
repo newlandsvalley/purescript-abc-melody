@@ -106,8 +106,8 @@ in  upstream
 -}
 
 let upstream =
-      https://github.com/purescript/package-sets/releases/download/psc-0.15.0-20220510/packages.dhall
-        sha256:0b0d4db1f2f0acd3b37fa53220644ac6f64cf9b5d0226fd097c0593df563d5be
+      https://github.com/purescript/package-sets/releases/download/psc-0.15.4-20221010/packages.dhall
+        sha256:adaff055458c5dd3568903f9e54b5cd8bed23085d5b344482fd804050c5e1849
    
 in  upstream
     with halogen-components =
@@ -123,27 +123,8 @@ in  upstream
        , repo =
          "https://github.com/newlandsvalley/purescript-halogen-components.git"
        , version =
-         "ps015"
+         "v0.6.0"
        }
-  with abc-parser =
-    { dependencies = [ "bifunctors"
-    , "effect"
-    , "either"
-    , "foldable-traversable"
-    , "maybe"
-    , "midi"
-    , "ordered-collections"
-    , "profunctor-lenses"
-    , "rationals"
-    , "strings"
-    , "stringutils"
-    , "string-parsers"
-    , "transformers"
-    , "tuples"
-    ]
-    , repo = "https://github.com/newlandsvalley/purescript-abc-parser.git"
-    , version = "ps015"
-    }
   with rhythm-guitar =
     { dependencies =
       [ "aff"
@@ -161,12 +142,12 @@ in  upstream
       , "prelude"
       , "psci-support"
       , "soundfonts"
+      , "simple-json"
       , "string-parsers"
       , "strings"
       , "tuples"
-      , "yoga-json"
       ]
     , repo = "https://github.com/newlandsvalley/RhythmGuitar.git"
-    , version = "main"
+    , version = "v0.2.0"
     }
     

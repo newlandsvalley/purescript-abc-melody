@@ -6,8 +6,8 @@
     "player": "spago -x ./player.dhall bundle-app --main Player.Main --to player/dist/app.js"
   },
   "devDependencies": {
-    "spago": "^0.19.8",
-    "purescript": "^0.15.0",
+    "spago": "^0.20.9",
+    "purescript": "^0.15.4",
     "purescript-psa": "^0.5.1"
   }
 }

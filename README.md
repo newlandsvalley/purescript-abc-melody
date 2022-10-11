@@ -1,7 +1,8 @@
 purescript-abc-melody
 =====================
 
-Generate a playable monophonic melody directly from an ABC source. 
+Generate a playable monophonic melody directly from an ABC source. For more information, see the [guide](https://github.com/newlandsvalley/purescript-abc-melody/blob/master/docs/GUIDE.md).
+
 
 The melody is generated on channel 0.  If there are chord symbols in the ABC and a chord map is provided, chordal accompaniment is generated on channel 1.
 
@@ -19,11 +20,6 @@ To Build
 --------
 
      npm run build
-
-or 
-
-     bower install
-     pulp build
 
 To build the player example
 ---------------------------
