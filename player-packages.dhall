@@ -106,9 +106,9 @@ in  upstream
 -}
 
 let upstream =
-      https://github.com/purescript/package-sets/releases/download/psc-0.15.4-20221010/packages.dhall
-        sha256:adaff055458c5dd3568903f9e54b5cd8bed23085d5b344482fd804050c5e1849
-   
+      https://github.com/purescript/package-sets/releases/download/psc-0.15.10-20230808/packages.dhall
+        sha256:1f2f8be27ed474d333848bfae9db43790202e3b4da8d73584b1029260677d7e1
+
 in  upstream
     with halogen-components =
        { dependencies =
@@ -150,4 +150,25 @@ in  upstream
     , repo = "https://github.com/newlandsvalley/RhythmGuitar.git"
     , version = "v0.2.0"
     }
+  with abc-parser =
+    { dependencies =
+      [ "bifunctors"
+      , "effect"
+      , "either"
+      , "foldable-traversable"
+      , "maybe"
+      , "midi"
+      , "ordered-collections"
+      , "profunctor-lenses"
+      , "rationals"
+      , "strings"
+      , "stringutils"
+      , "string-parsers"
+      , "transformers"
+      , "tuples"
+      ]
+    , repo = "https://github.com/newlandsvalley/purescript-abc-parser.git"
+    , version = "2d64d0d6163361a3d8263662534078016a08a32c"
+    }
+
     

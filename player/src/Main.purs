@@ -28,7 +28,7 @@ main = HA.runHalogenAff do
   chordShapes <- H.liftAff loadDefaultChordShapes
   let
     abcText = delsboPolska -- fjällnäs --- ossian -- augustsson
-    etune = parse abcText 
+    etune = parse abcText
     chordMap = buildMidiChordMap chordShapes
   body <- HA.awaitBody
   case etune of

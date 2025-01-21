@@ -15,7 +15,7 @@ import Data.Abc.Melody.Types
 import Audio.SoundFont.Melody (Melody)
 import Audio.SoundFont.Melody.Class (class Playable)
 import Control.Monad.State (State, get, put, modify_, execState)
-import Data.Abc (AbcNote, AbcRest, AbcTune, Accidental(..), Bar, BarLine, BodyPart(..), Broken(..), SymbolDefinition, Grace, GraceableNote, Header(..), ModifiedKeySignature, Music(..), MusicLine, NoteDuration, RestOrNote, TempoSignature, TuneBody)
+import Data.Abc (AbcNote, AbcRest, AbcTune, Accidental(..), Bar, BarLine, BodyPart(..), SymbolDefinition, Grace, GraceableNote, Header(..), ModifiedKeySignature, Music(..), MusicLine, NoteDuration, RestOrNote, TempoSignature, TuneBody)
 import Data.Abc.Accidentals as Accidentals
 import Data.Abc.KeySignature (defaultKey, getKeySig)
 import Data.Abc.Melody.ChordSymbol (expandChordSymbols)
@@ -23,9 +23,9 @@ import Data.Abc.Melody.Intro (appendIntroSections)
 import Data.Abc.Melody.RepeatBuilder (buildRepeatedMelody)
 import Data.Abc.Melody.RepeatSections (initialRepeatState, indexBar, finalBar)
 import Data.Abc.Midi.Pitch (toMidiPitch)
+import Data.Abc.Normaliser (normalise)
 import Data.Abc.Repeats.Types (RepeatState)
 import Data.Abc.Tempo (AbcTempo, getAbcTempo, setBpm, playedNoteDuration)
-import Data.Abc.Utils (dotFactor)
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray, fromFoldable1, reverse, singleton) as NEA
 import Data.Bifunctor (bimap)
@@ -87,8 +87,10 @@ defaultVolume = 0.5
 toPlayableMelody :: PlayableAbc -> Melody
 toPlayableMelody (PlayableAbc pa) =
   let
+    -- normalise the tune to replace broken rhythm pairs with conventional notes or rests
+    normalisedTune = normalise pa.tune
     -- the playable ABC may override the default bpm of the tune
-    tune = maybe pa.tune (\bpm -> setBpm bpm pa.tune) pa.bpmOverride
+    tune = maybe  normalisedTune (\bpm -> setBpm bpm normalisedTune) pa.bpmOverride
     -- tune = setBpm pa.bpm pa.tune
     tstate =
       execState (transformTune tune) (initialState pa tune)
@@ -220,17 +222,6 @@ transformMusic m =
       -- modified by the overall chord duration which is the full duration
       fullDuration = abcChord.duration * first.duration    
 
-    BrokenRhythmPair note1 broken note2 ->
-      case broken of
-        LeftArrow i ->
-          do
-            _ <- handleGraceableNote (brokenTempo i false) note1
-            handleGraceableNote (brokenTempo i true) note2
-        RightArrow i ->
-          do
-            _ <- handleGraceableNote (brokenTempo i true) note1
-            handleGraceableNote (brokenTempo i false) note2
-
     Inline header ->
       transformHeader header
 
@@ -244,6 +235,7 @@ transformMusic m =
         handleAccompaniment symbol 
 
     _ ->
+      -- includes broker rhythm pairs which are replaced by the normaliser to normal notes or rests
       do
         pure unit
 
@@ -676,19 +668,10 @@ iNoteAccompaniment config duration pitches =
     , canPhrase: false -- can we form a new phrase at this note?
     }
 
--- | work out the broken rhythm tempo
-brokenTempo :: Int -> Boolean -> Rational
-brokenTempo i isUp =
-  if isUp then
-    (fromInt 1) + (dotFactor i)
-  else
-    (fromInt 1) - (dotFactor i)
-
 -- | does the MIDI bar hold no notes (or any other MIDI messages)
 isBarEmpty :: MidiBar -> Boolean
 isBarEmpty mb =
   Array.null mb.iPhrase
-
 
 -- | Curtail the duration of the note by taking account of any grace notes
 -- | that it may have

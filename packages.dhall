@@ -127,3 +127,23 @@ in  upstream
     , repo = "https://github.com/newlandsvalley/RhythmGuitar.git"
     , version = "v0.2.1"
     }
+  with abc-parser =
+    { dependencies =
+      [ "bifunctors"
+      , "effect"
+      , "either"
+      , "foldable-traversable"
+      , "maybe"
+      , "midi"
+      , "ordered-collections"
+      , "profunctor-lenses"
+      , "rationals"
+      , "strings"
+      , "stringutils"
+      , "string-parsers"
+      , "transformers"
+      , "tuples"
+      ]
+    , repo = "https://github.com/newlandsvalley/purescript-abc-parser.git"
+    , version = "2d64d0d6163361a3d8263662534078016a08a32c"
+    }

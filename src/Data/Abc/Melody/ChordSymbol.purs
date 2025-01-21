@@ -72,9 +72,6 @@ setChordSymbolDurationsWork =
 
         Chord chord ->
           Tuple (music : acc) (duration + chordDuration chord)
-
-        BrokenRhythmPair note1 _ note2 -> 
-          Tuple (music : acc) (duration + note1.abcNote.duration + note2.abcNote.duration)         
         
         ChordSymbol symbol ->
           -- set the chord symbol duration and restart the count
@@ -85,6 +82,7 @@ setChordSymbolDurationsWork =
           Tuple (ChordSymbol newSymbol : acc ) (fromInt 0)
 
         x -> 
+          -- includes broken rhythm pairs which are normalised away and replaced by normal notes or rests
           Tuple (x : acc) duration
 
 -- | calculate the duration of the full bar of music 
@@ -108,10 +106,8 @@ fullBarDuration =
 
         Chord chord ->
           duration + chordDuration chord
-
-        BrokenRhythmPair note1 _ note2 -> 
-          duration + note1.abcNote.duration + note2.abcNote.duration       
         
         _ -> 
+        -- excludes broken rhythm pairs which have been replaced by the normaliser to either notes or rests
           duration
 
