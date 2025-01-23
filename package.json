@@ -1,14 +1,14 @@
 {
   "private": true,
   "scripts": {
-    "build": "spago build",
-    "test": "spago -x ./test.dhall test",
-    "player": "spago -x ./player.dhall bundle-app --main Player.Main --to player/dist/app.js"
+    "build": "spago-legacy build",
+    "test": "spago-legacy -x ./test.dhall test",
+    "player": "spago-legacy -x ./player.dhall bundle-app --main Player.Main --to player/dist/app.js"
   },
   "devDependencies": {
     "purescript": "^0.15.10",
     "purescript-psa": "^0.5.1",
-    "spago": "^0.21.0"
+    "spago-legacy": "^0.21.0"
   },
   "dependencies": {
     "esbuild": "^0.18.20"
