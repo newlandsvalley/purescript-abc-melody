@@ -1,14 +1,15 @@
 {
   "private": true,
   "scripts": {
-    "build": "spago-legacy build",
-    "test": "spago-legacy -x ./test.dhall test",
-    "player": "spago-legacy -x ./player.dhall bundle-app --main Player.Main --to player/dist/app.js"
+    "build": "spago build -p abc-melody",
+    "buildall": "spago build",
+    "test": "spago test",
+    "player": "spago bundle --package player --outfile dist/app.js --bundle-type module --platform browser"
   },
   "devDependencies": {
-    "purescript": "^0.15.10",
+    "purescript": "^0.15.15",
     "purescript-psa": "^0.5.1",
-    "spago-legacy": "^0.21.0"
+    "spago": "^0.93.42"
   },
   "dependencies": {
     "esbuild": "^0.18.20"

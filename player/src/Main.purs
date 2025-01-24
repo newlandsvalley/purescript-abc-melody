@@ -1,4 +1,4 @@
-module Player.Main where
+module Main where
 
 import Audio.SoundFont (Instrument, loadRemoteSoundFonts)
 import Effect (Effect)

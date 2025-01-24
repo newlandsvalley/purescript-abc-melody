@@ -9,5 +9,6 @@
 /.psa*
 /.vscode
 /.metals
+/.spec*
 sections.txt
 .purs-repl

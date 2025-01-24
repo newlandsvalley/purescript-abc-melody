@@ -1,0 +1,26 @@
+package:
+  name: abc-melody
+  dependencies:
+    - abc-parser
+    - arrays
+    - bifunctors
+    - either
+    - foldable-traversable
+    - integers
+    - lists
+    - maybe
+    - newtype
+    - ordered-collections
+    - prelude
+    - rationals
+    - rhythm-guitar
+    - soundfonts
+    - transformers
+    - tuples
+  test:
+    main: Test.Main
+    dependencies:
+      - aff
+      - effect
+      - spec
+      - spec-node
