@@ -2,7 +2,7 @@
   "workspace": {
     "packages": {
       "abc-melody": {
-        "path": "lib",
+        "path": "./",
         "core": {
           "dependencies": [
             "abc-parser",
