@@ -17,7 +17,6 @@
             "ordered-collections",
             "prelude",
             "rationals",
-            "rhythm-guitar",
             "soundfonts",
             "transformers",
             "tuples"
@@ -37,7 +36,6 @@
             "contravariant",
             "control",
             "datetime",
-            "debug",
             "distributive",
             "effect",
             "either",
@@ -76,14 +74,11 @@
             "prelude",
             "profunctor",
             "profunctor-lenses",
-            "psci-support",
             "rationals",
             "record",
             "refs",
-            "rhythm-guitar",
             "safe-coerce",
             "signal",
-            "simple-json",
             "soundfonts",
             "st",
             "string-parsers",
@@ -96,7 +91,6 @@
             "typelevel-prelude",
             "unfoldable",
             "unsafe-coerce",
-            "variant",
             "web-dom",
             "web-events",
             "web-file",
@@ -199,7 +193,6 @@
             "halogen",
             "halogen-components",
             "midi",
-            "rhythm-guitar",
             "soundfonts"
           ],
           "build_plan": [
@@ -222,7 +215,6 @@
             "control",
             "css",
             "datetime",
-            "debug",
             "distributive",
             "dom-indexed",
             "effect",
@@ -273,17 +265,14 @@
             "prelude",
             "profunctor",
             "profunctor-lenses",
-            "psci-support",
             "quickcheck",
             "quickcheck-laws",
             "random",
             "rationals",
             "record",
             "refs",
-            "rhythm-guitar",
             "safe-coerce",
             "signal",
-            "simple-json",
             "soundfonts",
             "st",
             "string-parsers",
@@ -298,7 +287,6 @@
             "unfoldable",
             "unsafe-coerce",
             "unsafe-reference",
-            "variant",
             "web-clipboard",
             "web-dom",
             "web-events",
@@ -873,31 +861,6 @@
           "js-fileio",
           "soundfonts"
         ]
-      },
-      "rhythm-guitar": {
-        "git": "https://github.com/newlandsvalley/RhythmGuitar.git",
-        "ref": "v0.2.1",
-        "dependencies": [
-          "aff",
-          "affjax",
-          "arrays",
-          "console",
-          "control",
-          "debug",
-          "effect",
-          "either",
-          "foreign",
-          "http-methods",
-          "maybe",
-          "ordered-collections",
-          "prelude",
-          "psci-support",
-          "simple-json",
-          "soundfonts",
-          "string-parsers",
-          "strings",
-          "tuples"
-        ]
       }
     }
   },
@@ -1194,15 +1157,6 @@
         "partial",
         "prelude",
         "tuples"
-      ]
-    },
-    "debug": {
-      "type": "registry",
-      "version": "6.0.2",
-      "integrity": "sha256-vmkYFuXYuELBzeauvgHG6E6Kf/Hp1dAnxwE9ByHfwSg=",
-      "dependencies": [
-        "functions",
-        "prelude"
       ]
     },
     "distributive": {
@@ -2045,16 +1999,6 @@
         "tuples"
       ]
     },
-    "psci-support": {
-      "type": "registry",
-      "version": "6.0.0",
-      "integrity": "sha256-C6ql4P9TEP06hft/1Z5QumPA4yARR4VIxDdhmL1EO+Y=",
-      "dependencies": [
-        "console",
-        "effect",
-        "prelude"
-      ]
-    },
     "quickcheck": {
       "type": "registry",
       "version": "8.0.1",
@@ -2136,32 +2080,6 @@
         "prelude"
       ]
     },
-    "rhythm-guitar": {
-      "type": "git",
-      "url": "https://github.com/newlandsvalley/RhythmGuitar.git",
-      "rev": "5e533fa42902f9039524dacdf7fc94897ae31825",
-      "dependencies": [
-        "aff",
-        "affjax",
-        "arrays",
-        "console",
-        "control",
-        "debug",
-        "effect",
-        "either",
-        "foreign",
-        "http-methods",
-        "maybe",
-        "ordered-collections",
-        "prelude",
-        "psci-support",
-        "simple-json",
-        "soundfonts",
-        "string-parsers",
-        "strings",
-        "tuples"
-      ]
-    },
     "safe-coerce": {
       "type": "registry",
       "version": "2.0.0",
@@ -2181,22 +2099,6 @@
         "foldable-traversable",
         "maybe",
         "prelude"
-      ]
-    },
-    "simple-json": {
-      "type": "registry",
-      "version": "9.0.0",
-      "integrity": "sha256-K3RJaThqsszTd+TEklzZmAdDqvIHWgXIfKqlsoykU1c=",
-      "dependencies": [
-        "arrays",
-        "exceptions",
-        "foreign",
-        "foreign-object",
-        "nullable",
-        "prelude",
-        "record",
-        "typelevel-prelude",
-        "variant"
       ]
     },
     "soundfonts": {
@@ -2461,21 +2363,6 @@
       "integrity": "sha256-zU7BhfJU14nXQRZG9iADsp0mSiKhz07OcKyjRB2YT+Y=",
       "dependencies": [
         "prelude"
-      ]
-    },
-    "variant": {
-      "type": "registry",
-      "version": "8.0.0",
-      "integrity": "sha256-SR//zQDg2dnbB8ZHslcxieUkCeNlbMToapvmh9onTtw=",
-      "dependencies": [
-        "enums",
-        "lists",
-        "maybe",
-        "partial",
-        "prelude",
-        "record",
-        "tuples",
-        "unsafe-coerce"
       ]
     },
     "web-clipboard": {

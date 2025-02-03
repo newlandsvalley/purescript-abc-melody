@@ -19,7 +19,6 @@ The ```Melody``` type is defined in ```purescript-soundfonts```.  It consists si
   , "midi"
   , "newtype"
   , "prelude"
-  , "rhythm-guitar"
   , "soundfonts"
   , "unsafe-coerce"
   , "web-dom"
@@ -104,31 +103,6 @@ abcString =
   <> "\"Bm\"f2d>f d>f | \"F#7\"~f>e c>e c>e | \"Bm\"e>d B>d f>d | \"F#7\"c>^A \"Bm\"B4 :|]\r\n"
 ``` 
 
-## Simple Player with Guitar Chords
-
-Notice that the sample ABC tune has chord symbols which were not heard in the example above.  ```abc-melody``` allows for these chords to be heard, played (in this instance) on a MIDI steel guitar. The melody itself plays on channel 0 and the chords on channel 1, which means that you have to load both the ```AcousticGrandPiano``` and  ```AcousticGuitarSteel``` soundfonts.
-
-Firstly, you must import from the ```rhythm-guitar``` library:
-
-```purs
-import RhythmGuitar.Audio (buildMidiChordMap)
-import RhythmGuitar.Network (loadDefaultChordShapes)
-```
-
-Then you need to amend the ```playTune``` function:
-
-```purs 
-playTune :: AbcTune -> Aff Unit 
-playTune abcTune = do
-  chordShapes <- loadDefaultChordShapes
-  let
-    chordMap = buildMidiChordMap chordShapes
-    playableAbc = PlayableAbc $ defaultPlayableAbcProperties 
-                    { tune = abcTune, phraseSize = 10.0, chordMap = chordMap }
-    melody = toPlayableMelody playableAbc
-  instruments <- loadRemoteSoundFonts [AcousticGrandPiano, AcousticGuitarSteel]
-  playMelody instruments melody 
-```
 
 ## Player Widget 
 

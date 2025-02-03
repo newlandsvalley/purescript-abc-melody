@@ -4,7 +4,7 @@
     "build": "spago build -p abc-melody",
     "buildall": "spago build",
     "test": "spago test",
-    "player": "spago bundle --package player --outfile dist/app.js --bundle-type module --platform browser"
+    "player": "spago bundle --package player --outfile dist/app.js --bundle-type app --platform browser"
   },
   "devDependencies": {
     "purescript": "^0.15.15",
@@ -12,6 +12,6 @@
     "spago": "^0.93.42"
   },
   "dependencies": {
-    "esbuild": "^0.18.20"
+    "esbuild": "^0.24.2"
   }
 }

@@ -7,6 +7,5 @@ package:
     - halogen
     - halogen-components
     - midi
-    - rhythm-guitar
     - soundfonts
     - abc-melody

@@ -14,9 +14,6 @@ import Halogen.Aff as HA
 import Halogen.VDom.Driver (runUI)
 import Halogen.PlayerComponent (component)
 import Prelude (Unit, unit, bind, discard, pure, (<>), ($))
-import RhythmGuitar.Audio (buildMidiChordMap)
-import RhythmGuitar.Network (loadDefaultChordShapes)
-
 
 loadInstruments :: Aff (Array Instrument)
 loadInstruments =
@@ -25,11 +22,9 @@ loadInstruments =
 main :: Effect Unit
 main = HA.runHalogenAff do
   instruments <- H.liftAff loadInstruments 
-  chordShapes <- H.liftAff loadDefaultChordShapes
   let
     abcText = delsboPolska -- fjällnäs --- ossian -- augustsson
     etune = parse abcText
-    chordMap = buildMidiChordMap chordShapes
   body <- HA.awaitBody
   case etune of
     Right abcTune -> do
@@ -38,7 +33,6 @@ main = HA.runHalogenAff do
           { tune = abcTune
           , phraseSize = 0.9
           , generateIntro = false
-          , chordMap = chordMap
           }
         playableAbc = PlayableAbc props
       _ <- runUI (component playableAbc instruments) unit body

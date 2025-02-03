@@ -5,7 +5,6 @@ module Data.Abc.Melody.Types
   , MidiBar
   , MidiBars 
   , Label (..)
-  , module Exports
   ) where
 
 import Data.Abc (Volta)
@@ -14,7 +13,6 @@ import Data.List (List)
 import Data.List.NonEmpty (NonEmptyList)
 import Data.Maybe (Maybe)
 import Prelude (class Eq, class Show)
-import RhythmGuitar.Types (MidiPitch, Pitches, MidiPitchChordMap) as Exports
 
 -- | An intermediate note representation
 -- | This represents a single note if pitches is a singleton 
@@ -34,7 +32,7 @@ type INote =
 -- | re-rendered after each phrase is played
 type IPhrase = Array INote
 
--- | ab intermediate definition of a Melody
+-- | an intermediate definition of a Melody
 type IMelody = Array IPhrase
 
 -- | a bar of MIDI music
@@ -50,7 +48,7 @@ type MidiBars = List MidiBar
 
 data Label
   = LeadIn -- lead-in bars existing in the tune
-  | Intro --- artificially generated Intro
+  | Intro  -- artificially generated Intro
   | APart
   | OtherPart
 
