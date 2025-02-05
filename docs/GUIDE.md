@@ -2,7 +2,7 @@
 
 The ```Melody``` type is defined in ```purescript-soundfonts```.  It consists simply of an Array of ```MidiPhrase``` where each phrase is an Array of ```MidiNote```.  A phrase is a sequence of music which can played in the browser without interruption, which means that a suitable player widget can allow for other UI events at each phrase boundary. A ```MidiNote``` is simply the note pitch, duration and volume together with a channel number over which is is transmitted.  Each channel is associated with a different MIDI instrument.
 
-```abc-melody``` converts a parsed single-voice tune in ABC format to a ```Melody```. The simplest thing to be able to do is to play the entire melody without interruption using ```playMelody``` from ```Audio.SoundFonts.Melody```.  The following dependencies are needed:
+```abc-melody``` converts a parsed single-voice tune in ABC format to a ```Melody```. In doing so, it always ignores chord symbols.  If you prefer to hear the chords, you should use ```melody-plus-chords``` instead. The simplest thing to be able to do is to play the entire melody without interruption using ```playMelody``` from ```Audio.SoundFonts.Melody```.  The following dependencies are needed:
 
 ## Dependencies
 
