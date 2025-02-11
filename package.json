@@ -12,6 +12,6 @@
     "spago": "^0.93.42"
   },
   "dependencies": {
-    "esbuild": "^0.24.2"
+    "esbuild": "^0.25.0"
   }
 }
