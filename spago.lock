@@ -19,7 +19,8 @@
             "rationals",
             "soundfonts",
             "transformers",
-            "tuples"
+            "tuples",
+            "unfoldable"
           ],
           "build_plan": [
             "abc-parser",

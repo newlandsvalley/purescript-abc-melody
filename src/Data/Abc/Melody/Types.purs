@@ -1,10 +1,10 @@
-module Data.Abc.Melody.Types 
+module Data.Abc.Melody.Types
   ( INote
   , IPhrase
   , IMelody
   , MidiBar
-  , MidiBars 
-  , Label (..)
+  , MidiBars
+  , Label(..)
   ) where
 
 import Data.Abc (Volta)
@@ -48,7 +48,7 @@ type MidiBars = List MidiBar
 
 data Label
   = LeadIn -- lead-in bars existing in the tune
-  | Intro  -- artificially generated Intro
+  | Intro -- artificially generated Intro
   | APart
   | OtherPart
 

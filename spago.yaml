@@ -15,6 +15,7 @@ package:
     - rationals
     - soundfonts
     - transformers
+    - unfoldable
     - tuples
   test:
     main: Test.Main

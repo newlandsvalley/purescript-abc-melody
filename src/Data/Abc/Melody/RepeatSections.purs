@@ -132,6 +132,7 @@ endAndStartSection endPos isRepeatEnd repeatStartCount r =
         r.current
     -- now set the end position from the bar number position
     current' = setEndPos endPos current
+
     -- set the new current into the state
     endState :: RepeatState
     endState = r { current = current' }
@@ -197,6 +198,7 @@ labelCurrentSection rs =
         Section current
     else if (length rs.sections == 0) then
       if (isLeadIn rs.current) then --
+
         Section current { label = LeadIn }
       else
         Section current { label = APart }

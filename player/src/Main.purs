@@ -7,7 +7,7 @@ import Effect.Class (liftEffect)
 import Effect.Console (log)
 import Data.Either (Either(..))
 import Data.Abc.Parser (parse)
-import Data.Abc.Melody (PlayableAbc(..), defaultPlayableAbcProperties)
+import Data.Abc.Melody (PlayableAbc(..), Playback(..), defaultPlayableAbcProperties)
 import Data.Midi.Instrument (InstrumentName(..))
 import Halogen as H
 import Halogen.Aff as HA
@@ -23,7 +23,7 @@ main :: Effect Unit
 main = HA.runHalogenAff do
   instruments <- H.liftAff loadInstruments 
   let
-    abcText = delsboPolska -- fjällnäs --- ossian -- augustsson
+    abcText = ossian -- delsboPolska -- fjällnäs -- augustsson
     etune = parse abcText
   body <- HA.awaitBody
   case etune of
@@ -32,7 +32,7 @@ main = HA.runHalogenAff do
         props = defaultPlayableAbcProperties
           { tune = abcTune
           , phraseSize = 0.9
-          , generateIntro = false
+          , playback = Loop 2
           }
         playableAbc = PlayableAbc props
       _ <- runUI (component playableAbc instruments) unit body

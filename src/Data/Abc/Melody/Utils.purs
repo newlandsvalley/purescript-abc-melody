@@ -1,6 +1,4 @@
-module Data.Abc.Melody.Utils
-
-where 
+module Data.Abc.Melody.Utils where
 
 import Prelude ((*), ($), (-), identity)
 import Data.Abc (AbcNote, Accidental(..), BarLine, Grace, RestOrNote)
@@ -84,12 +82,12 @@ gracifyFirstNote maybeGrace restsOrNotes =
   let
     hd = NEL.head restsOrNotes
     tl = NEL.tail restsOrNotes
+
     f :: RestOrNote -> RestOrNote
     f =
       bimap identity (\gn -> gn { maybeGrace = maybeGrace })
   in
     Cons (f hd) tl
-
 
 -- | The very first bar has a default tempo as the only message
 initialBar :: MidiBar

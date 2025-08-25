@@ -1,6 +1,7 @@
 -- | Conversion of an ABC tune to MIDI.
 module Data.Abc.Melody
   ( MidiPitch
+  , Playback(..)
   , PlayableAbc(..)
   , PlayableAbcProperties
   , defaultPlayableAbcProperties
@@ -9,17 +10,18 @@ module Data.Abc.Melody
 
 -- | Build a phrased, playable melody directly from a monophonic ABC Score
 
+import Data.Abc.Melody.Utils
+
 import Audio.SoundFont.Melody (Melody)
 import Audio.SoundFont.Melody.Class (class Playable)
 import Control.Monad.State (State, get, put, modify_, execState)
 import Data.Abc (AbcNote, AbcRest, AbcTune, Bar, BarLine, BodyPart(..), Grace, GraceableNote, Header(..), ModifiedKeySignature, Music(..), MusicLine, NoteDuration, RestOrNote, TempoSignature, TuneBody)
 import Data.Abc.Accidentals as Accidentals
 import Data.Abc.KeySignature (defaultKey, getKeySig)
-import Data.Abc.Melody.Types (INote, IPhrase, MidiBar)
-import Data.Abc.Melody.Utils
 import Data.Abc.Melody.Intro (appendIntroSections)
 import Data.Abc.Melody.RepeatBuilder (buildRepeatedMelody)
 import Data.Abc.Melody.RepeatSections (initialRepeatState, indexBar, finalBar)
+import Data.Abc.Melody.Types (INote, IPhrase, MidiBar)
 import Data.Abc.Midi.Pitch (toMidiPitch)
 import Data.Abc.Normaliser (normalise)
 import Data.Abc.Repeats.Types (RepeatState)
@@ -34,14 +36,31 @@ import Data.List.NonEmpty (head, toList) as NEL
 import Data.Maybe (Maybe(..), fromMaybe, isJust, isNothing, maybe)
 import Data.Rational (Rational, fromInt, (%))
 import Data.Tuple (Tuple(..))
-import Prelude (Unit, bind, map, pure, unit, ($), (&&), (*), (+), (<>), (==), (||), (>))
+import Data.Unfoldable (unfoldr)
+import Prelude (class Eq, class Show, Unit, bind, map, pure, show, unit, ($), (&&), (*), (+), (-), (<>), (==), (||), (>))
 
--- | Properties of an ABC tune that determine how it shall be played
+-- | What type of playback should be provided fot ehe melody?
+-- | - just the melody
+-- | - an intro plus the melody 
+-- | - looping the melody multiple times
+data Playback
+  = Normal
+  | WithIntro
+  | Loop Int
+
+instance showPlayback :: Show Playback where
+  show Normal = "Normal"
+  show WithIntro = "With intro"
+  show (Loop n) = "Repeat loop " <> show n
+
+derive instance eqPlayback :: Eq Playback
+
+-- | Properties of an ABC tune that determine how it shall be playedtype 
 type PlayableAbcProperties =
   { tune :: AbcTune -- the tune
   , bpmOverride :: Maybe Int -- override the bpm (beats per minute) in the ABC tune
   , phraseSize :: Number -- the max length of a phrase before interruptions allowed
-  , generateIntro :: Boolean -- generate an intro from the A Part ending
+  , playback :: Playback -- what type of playback is required
   }
 
 newtype PlayableAbc = PlayableAbc PlayableAbcProperties
@@ -54,7 +73,7 @@ defaultPlayableAbcProperties =
   { tune: { headers: Nil, body: Nil }
   , bpmOverride: Nothing
   , phraseSize: 0.7
-  , generateIntro: false
+  , playback: Normal
   }
 
 instance playableAbc :: Playable PlayableAbc where
@@ -64,7 +83,6 @@ instance playableAbc :: Playable PlayableAbc where
 type MidiPitch =
   Int
 
-
 -- | Convert the ABC tune to a melody that is playable in a soundfonts player widget
 toPlayableMelody :: PlayableAbc -> Melody
 toPlayableMelody (PlayableAbc pa) =
@@ -72,12 +90,12 @@ toPlayableMelody (PlayableAbc pa) =
     -- normalise the tune to replace broken rhythm pairs with conventional notes or rests
     normalisedTune = normalise pa.tune
     -- the playable ABC may override the default bpm of the tune
-    tune = maybe  normalisedTune (\bpm -> setBpm bpm normalisedTune) pa.bpmOverride
+    tune = maybe normalisedTune (\bpm -> setBpm bpm normalisedTune) pa.bpmOverride
     -- tune = setBpm pa.bpm pa.tune
     tstate =
       execState (transformTune tune) (initialState pa tune)
   in
-    buildMelody tstate pa.generateIntro
+    buildMelody tstate pa.playback
 
 -- | the state to thread through the computation
 type TState =
@@ -96,8 +114,8 @@ type TState =
 -- | Take the completed tune which exists in tstats largely as a flat
 -- | sequence of INotes and build a phrased melody taking account
 -- | od all repeated sections and so on.
-buildMelody :: TState -> Boolean -> Melody
-buildMelody tstate generateIntro =
+buildMelody :: TState -> Playback -> Melody
+buildMelody tstate playback =
   let
     currentBar = tstate.currentBar
 
@@ -105,10 +123,11 @@ buildMelody tstate generateIntro =
     finalRepeatState =
       finalBar currentBar tstate.repeatState
     repeatState =
-      if generateIntro then
-        appendIntroSections finalRepeatState
-      else
-        finalRepeatState
+      case playback of
+        WithIntro ->
+          appendIntroSections finalRepeatState
+        _ ->
+          finalRepeatState
     -- ensure we incorporate the very last bar
     rawMelody = currentBar : tstate.rawMelody
   -- foo1 = spy "final repeat sections"  finalRepeatState
@@ -116,7 +135,16 @@ buildMelody tstate generateIntro =
   -- bad = spy "raw melody" tstate'.rawMelody
   -- bar = spy "intro bars"  tstate'.repeatState.intro
   in
-    buildRepeatedMelody rawMelody repeatState.sections tstate.phraseSize
+    case playback of
+      Loop n ->
+        -- if looping, we'll replicate n times
+        let 
+          singleMelody = 
+            buildRepeatedMelody rawMelody repeatState.sections tstate.phraseSize
+          in
+            buildLoop n singleMelody
+      _ ->
+        buildRepeatedMelody rawMelody repeatState.sections tstate.phraseSize
 
 -- | We constructb the final value from the TState itself
 transformTune :: AbcTune -> State TState Unit
@@ -155,7 +183,6 @@ transformBar bar =
   do
     _ <- handleBar bar.startLine
     transformMusicLine bar.music
-    
 
 transformMusicLine :: MusicLine -> State TState Unit
 transformMusicLine Nil =
@@ -168,13 +195,13 @@ transformMusicLine (l : ls) =
 transformMusic :: Music -> State TState Unit
 transformMusic m =
   case m of
-    
+
     Note graceableNote ->
-      handleGraceableNote (1 % 1) graceableNote    
+      handleGraceableNote (1 % 1) graceableNote
 
     Rest r ->
       handleRest (1 % 1) r
-    
+
     Tuplet t ->
       handleTupletContents t.maybeGrace (t.signature.q % t.signature.p) t.restsOrNotes
 
@@ -188,14 +215,14 @@ transformMusic m =
       first = NEL.head abcChord.notes
       -- we'll pace the chord from the duration of the first note it contains,
       -- modified by the overall chord duration which is the full duration
-      fullDuration = abcChord.duration * first.duration    
+      fullDuration = abcChord.duration * first.duration
 
     Inline header ->
       transformHeader header
 
-    ChordSymbol _symbol -> do 
+    ChordSymbol _symbol -> do
       -- we don't generate accompaniment from chord symbols in this library
-      pure unit 
+      pure unit
 
     _ ->
       -- includes broker rhythm pairs which are replaced by the normaliser to normal notes or rests
@@ -241,7 +268,7 @@ handleBar barLine = do
 -- | coalesce the new bar from ABC with the current one held in the state
 -- | (which has previously been tested for emptiness)
 coalesceBar :: BarLine -> State TState Unit
-coalesceBar barLine = do 
+coalesceBar barLine = do
   tstate <- get
   let
     endRepeats = tstate.currentBar.endRepeats + barLine.endRepeats
@@ -259,7 +286,7 @@ coalesceBar barLine = do
 -- | other headers have no effect
 -- | but ABC allows headers to change mid-tune
 transformHeader :: Header -> State TState Unit
-transformHeader h = do 
+transformHeader h = do
   case h of
     UnitNoteLength d ->
       modify_ (addUnitNoteLenToState d)
@@ -287,10 +314,10 @@ handleGraceableNote tempoModifier graceableNote = do
     -- if the last note was tied, we need its duration to be able to pace the next note
     lastTiedNoteDuration = maybe (0 % 1) _.abcNote.duration tstate.lastNoteTied
   if (isJust newTie) then
-      put tstate'
-  else do 
+    put tstate'
+  else do
     put $ incrementTimeOffset ((abcNote.duration + lastTiedNoteDuration) * tempoModifier) tstate'
-    
+
 -- | Handle a rest note.  Rests are now indicated by a note of zero pitch
 -- | this allows the phrasing module to schedule when the notes are played
 -- | properly in ach sub phrase
@@ -398,21 +425,21 @@ emitGracesAndNote tempoModifier tstate graceableNote =
     gracedNoteExtraOffset = sumDurations graceNotesPhrase
     gracedNote = curtailedGracedNote graceableNote.maybeGrace graceableNote.abcNote
     -- and we choose not to allow phrase boundaries if the note is graced
-    canPhrase = isNothing graceableNote.maybeGrace 
+    canPhrase = isNothing graceableNote.maybeGrace
     mainNote = emitNotePlus tempoModifier tstate gracedNote gracedNoteExtraOffset canPhrase
   in
     Array.cons mainNote graceNotesPhrase
 
 -- | handle notes from a chord
 handleChordalNotes :: Rational -> NonEmptyList AbcNote -> State TState Unit
-handleChordalNotes tempoModifier abcNotes = do 
-  tstate <- get 
+handleChordalNotes tempoModifier abcNotes = do
+  tstate <- get
   let
     notes =
       processChordalNotes tempoModifier tstate abcNotes true
     barAccidentals =
       foldl addNoteToBarAccidentals tstate.currentBarAccidentals abcNotes
-  put 
+  put
     tstate
       { currentBar = tstate.currentBar { iPhrase = notes }
       , currentBarAccidentals = barAccidentals
@@ -538,7 +565,7 @@ addUnitNoteLenToState d tstate =
 -- | cater for a change in unit note length
 -- | this not only changes state but adds a change tempo message
 addTempoToState :: TempoSignature -> TState -> TState
-addTempoToState tempoSig tstate  =
+addTempoToState tempoSig tstate =
   let
     abcTempo' =
       tstate.abcTempo
@@ -547,8 +574,6 @@ addTempoToState tempoSig tstate  =
         }
   in
     tstate { abcTempo = abcTempo' }
-
-
 
 -- | this initial state is then threaded through the computation
 -- | but will be altered when ABC headers are encountered
@@ -570,11 +595,21 @@ initialState props tune =
     }
 
 -- | return true if two tied notes can be tied legitimately to the following note
--- | the notes must have the same pitch and the following note my not be graced
+-- | the notes must have the same pitch and the following note may not be graced
 legitimateTie :: TState -> GraceableNote -> GraceableNote -> Boolean
 legitimateTie tstate tiedNote nextNote =
   ( toMidiPitch tstate.modifiedKeySignature tstate.currentBarAccidentals tiedNote.abcNote ==
-      toMidiPitch  tstate.modifiedKeySignature tstate.currentBarAccidentals nextNote.abcNote
+      toMidiPitch tstate.modifiedKeySignature tstate.currentBarAccidentals nextNote.abcNote
   )
     &&
       isNothing nextNote.maybeGrace
+
+-- | Loop the basic melody n times
+buildLoop :: Int -> Melody -> Melody
+buildLoop n melody =
+  Array.concat $ unfoldr f n
+
+  where
+  f :: Int -> Maybe (Tuple Melody Int)
+  f c =
+    if (c == 0) then Nothing else Just (Tuple melody (c - 1))

@@ -4,7 +4,7 @@ import Effect.Aff (Aff)
 import Audio.SoundFont (MidiNote)
 import Audio.SoundFont.Melody (Melody)
 import Data.Maybe (Maybe(..))
-import Data.Abc.Melody (PlayableAbc(..), PlayableAbcProperties, toPlayableMelody, defaultPlayableAbcProperties)
+import Data.Abc.Melody (PlayableAbc(..), PlayableAbcProperties, Playback(..), toPlayableMelody, defaultPlayableAbcProperties)
 import Data.Abc.Parser (parse)
 import Data.Array (take)
 import Data.Either (Either(..))
@@ -73,8 +73,8 @@ assertIntro s expected =
       let
         props = defaultPlayableAbcProperties
           { tune = tune
-          , generateIntro = true
           , phraseSize = longPhraseSize
+          , playback = WithIntro
           }
         melody = toPlayableMelody (PlayableAbc props)
         intro = take 2 melody
@@ -84,6 +84,25 @@ assertIntro s expected =
     Left err ->
       fail ("parse failed: " <> (show err))
 
+
+assertLoop :: Int -> String -> Melody -> Aff Unit
+assertLoop loopCount s expected =
+  case (parse s) of
+    Right tune ->
+      let
+        props = defaultPlayableAbcProperties
+          { tune = tune
+          , phraseSize = longPhraseSize
+          , playback = Loop loopCount
+          }
+        melody = toPlayableMelody (PlayableAbc props)
+      in
+        expected `shouldEqual` melody
+
+    Left err ->
+      fail ("parse failed: " <> (show err))
+
+
 melodySpec :: Spec Unit
 melodySpec = do
   transformationSpec
@@ -92,6 +111,7 @@ melodySpec = do
   atTempoSpec
   phrasingSpec
   introSpec
+  loopSpec
   abcWorkaroundSpec
 
 transformationSpec :: Spec Unit
@@ -386,6 +406,22 @@ introSpec =
           , noteB 1.0 0.75
           , noteFs 1.75 0.25
           ]
+        ]
+
+loopSpec :: Spec Unit
+loopSpec =
+  describe "playing on a loop" do
+    it "handles looping twice" do
+      assertLoop 2 "| CDE |\r\n"
+        [ [ noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25 ]
+        , [ noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25 ]
+        ]
+    it "handles looping four times" do
+      assertLoop 4 "| CDE | A |\r\n"
+        [ [ noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25, noteA 0.75 0.25 ]
+        , [ noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25, noteA 0.75 0.25 ]
+        , [ noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25, noteA 0.75 0.25 ]
+        , [ noteC 0.0 0.25, noteD 0.25 0.25, noteE 0.5 0.25, noteA 0.75 0.25 ]
         ]
 
 abcWorkaroundSpec :: Spec Unit
