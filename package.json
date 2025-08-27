@@ -1,8 +1,7 @@
 {
   "private": true,
   "scripts": {
-    "build": "spago build -p abc-melody",
-    "buildall": "spago build",
+    "build": "spago build",
     "test": "spago test",
     "player": "spago bundle --package player --outfile dist/app.js --bundle-type app --platform browser"
   },
