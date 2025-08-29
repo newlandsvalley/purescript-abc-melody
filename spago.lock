@@ -858,7 +858,7 @@
     "extra_packages": {
       "halogen-components": {
         "git": "https://github.com/newlandsvalley/purescript-halogen-components.git",
-        "ref": "v0.6.0",
+        "ref": "v0.6.1",
         "dependencies": [
           "console",
           "css",
@@ -1460,7 +1460,7 @@
     "halogen-components": {
       "type": "git",
       "url": "https://github.com/newlandsvalley/purescript-halogen-components.git",
-      "rev": "30080f7b1219b5370172d937ca971d89816ac5a9",
+      "rev": "6a7bfaebda2a30c6be3665c8c9fc21e7ba903d71",
       "dependencies": [
         "console",
         "css",

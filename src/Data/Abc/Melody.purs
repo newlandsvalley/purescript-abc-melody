@@ -51,7 +51,12 @@ data Playback
 instance showPlayback :: Show Playback where
   show Normal = "Normal"
   show WithIntro = "With intro"
-  show (Loop n) = "Repeat loop " <> show n
+  show (Loop n) = 
+    case n of 
+      1 -> "Play once"
+      2 -> "Play twice"
+      _ -> "Play " <> show n <> " times"
+
 
 derive instance eqPlayback :: Eq Playback
 

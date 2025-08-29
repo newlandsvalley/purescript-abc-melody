@@ -36,6 +36,6 @@ workspace:
         - halogen-css
         - soundfonts
       git: https://github.com/newlandsvalley/purescript-halogen-components.git
-      ref: v0.6.0
+      ref: v0.6.1
   packageSet:
     registry: 66.3.0
