@@ -13,7 +13,7 @@ It has the following features:
   * __abcTune__ - the tune to be played.
   * __bpmOverride__ - optionally override the tempo (within the ABC itself) at which to play the tune.
   * __phraseSize__ - the duration of each phrase of music after which the playback may be interrupted (default 0.7s).
-  * __generateIntro__ - if true, generate a 2-bar intro to replace any lead-in bar.
+  * __playback__ - choose the type of playback - normal (the default), repeated or preceded by an intro.
   
 To Build
 --------
