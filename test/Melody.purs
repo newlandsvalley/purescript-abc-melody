@@ -290,6 +290,13 @@ repeatSpec =
       assertMelody "|: CD |1,2,3 E :|4 F |\r\n" fourVoltasComplex
     it "handles 4 complex variant endings ..|1-3 :|4 .." do
       assertMelody "|: CD |1-3 E :|4 F |\r\n" fourVoltasComplex
+    it "handles variant repeats containing tied notes" do
+      assertMelody variantsWithTie
+        [ [ noteB 0.0 0.5, noteA 0.5 0.5]
+        , [ noteB 0.0 2.0 ]
+        , [ noteB 0.0 0.5, noteA 0.5 0.5] 
+        , [ noteG 0.0 2.0 ]
+        ]
 
 graceSpec :: Spec Unit
 graceSpec =

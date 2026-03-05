@@ -88,3 +88,13 @@ quaverRests =
     <> "L: 1/8\r\n"
     <> "K: D\r\n"
     <> "| cz dz cz dz | c8 |\r\n"
+
+variantsWithTie :: String 
+variantsWithTie = 
+  "X: 1\r\n"
+    <> "T: variant repeat with tie\r\n"
+    <> "M: 2/4\r\n"
+    <> "L: 1/8\r\n"
+    <> "K: G\r\n"
+    <> "B2 A2 |1 B4- | B4 :|2 G4- | G4 |\r\n"
+

@@ -278,10 +278,17 @@ coalesceBar barLine = do
   let
     endRepeats = tstate.currentBar.endRepeats + barLine.endRepeats
     startRepeats = tstate.currentBar.startRepeats + barLine.startRepeats
+    -- cater for a current bar which only contains a tied note and is effectively empty
+    -- by carrying across any volta iteration if the new barLine has none
+    -- it shouldn't arise if there's a tie across the bars that the new barLine has any volta
+    iteration =
+      if (isNothing barLine.iteration) then tstate.currentBar.iteration 
+      else barLine.iteration
+              
     bar' = tstate.currentBar
       { endRepeats = endRepeats
       , startRepeats = startRepeats
-      , iteration = barLine.iteration
+      , iteration = iteration
       }
   put
     tstate { currentBar = bar' }
