@@ -1,7 +1,6 @@
 -- | Conversion of an ABC tune to MIDI.
 module Data.Abc.Melody
-  ( MidiPitch
-  , Playback(..)
+  ( Playback(..)
   , PlayableAbc(..)
   , PlayableAbcProperties
   , defaultPlayableAbcProperties
@@ -84,9 +83,12 @@ defaultPlayableAbcProperties =
 instance playableAbc :: Playable PlayableAbc where
   toMelody pabc _ = toPlayableMelody pabc
 
+
+{-}
 -- | The pitch of a note expressed as a MIDI interval.
 type MidiPitch =
   Int
+-}
 
 -- | Convert the ABC tune to a melody that is playable in a soundfonts player widget
 toPlayableMelody :: PlayableAbc -> Melody
