@@ -83,13 +83,6 @@ defaultPlayableAbcProperties =
 instance playableAbc :: Playable PlayableAbc where
   toMelody pabc _ = toPlayableMelody pabc
 
-
-{-}
--- | The pitch of a note expressed as a MIDI interval.
-type MidiPitch =
-  Int
--}
-
 -- | Convert the ABC tune to a melody that is playable in a soundfonts player widget
 toPlayableMelody :: PlayableAbc -> Melody
 toPlayableMelody (PlayableAbc pa) =
@@ -169,8 +162,8 @@ transformBody (p : ps) =
     transformBody ps
 
 transformBodyPart :: BodyPart -> State TState Unit
-transformBodyPart bodyPart =
-  case bodyPart of
+transformBodyPart =
+  case _ of
     Score bars ->
       transformBarList bars
     BodyInfo header ->
@@ -200,8 +193,8 @@ transformMusicLine (l : ls) =
     transformMusicLine ls
 
 transformMusic :: Music -> State TState Unit
-transformMusic m =
-  case m of
+transformMusic =
+  case _ of
 
     Note graceableNote ->
       handleGraceableNote (1 % 1) graceableNote
@@ -300,8 +293,8 @@ coalesceBar barLine = do
 -- | other headers have no effect
 -- | but ABC allows headers to change mid-tune
 transformHeader :: Header -> State TState Unit
-transformHeader h = do
-  case h of
+transformHeader = do
+  case _ of
     UnitNoteLength d ->
       modify_ (addUnitNoteLenToState d)
     Key mks ->
