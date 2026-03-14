@@ -3,6 +3,7 @@ module Data.Abc.Melody.Utils where
 import Prelude ((*), ($), (-), identity)
 import Data.Abc (AbcNote, Accidental(..), BarLine, Grace, RestOrNote)
 import Data.Abc.Accidentals as Accidentals
+import Data.Abc.Midi.Pitch (MidiPitch)
 import Data.Abc.Melody.Types
 import Data.Array as Array
 import Data.Array.NonEmpty (NonEmptyArray, singleton) as NEA
@@ -27,7 +28,7 @@ addNoteToBarAccidentals accs abcNote =
 
 -- | Generate an intermediate MIDI note destined for the Melody buffer
 -- | as part of the melody proper
-iNote :: Number -> Number -> Int -> Boolean -> INote
+iNote :: Number -> Number -> MidiPitch -> Boolean -> INote
 iNote offset duration pitch canPhrase =
   { channel: 0 -- the MIDI channel
   , pitches: NEA.singleton pitch -- the MIDI pitch number
@@ -39,7 +40,7 @@ iNote offset duration pitch canPhrase =
 
 -- | Generate an intermediate MIDI note destined for the Melody buffer
 -- | which represents a chord (as part of the melody proper)
-iNotes :: Number -> Number -> NEA.NonEmptyArray Int -> Boolean -> INote
+iNotes :: Number -> Number -> NEA.NonEmptyArray MidiPitch -> Boolean -> INote
 iNotes offset duration pitches canPhrase =
   { channel: 0 -- the MIDI channel
   , pitches: pitches -- the MIDI pitch number
