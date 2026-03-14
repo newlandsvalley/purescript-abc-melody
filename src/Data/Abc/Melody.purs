@@ -21,7 +21,7 @@ import Data.Abc.Melody.Intro (appendIntroSections)
 import Data.Abc.Melody.RepeatBuilder (buildRepeatedMelody)
 import Data.Abc.Melody.RepeatSections (initialRepeatState, indexBar, finalBar)
 import Data.Abc.Melody.Types (INote, IPhrase, MidiBar)
-import Data.Abc.Midi.Pitch (toMidiPitch)
+import Data.Abc.Midi.Pitch (MidiPitch, toMidiPitch)
 import Data.Abc.Normaliser (normalise)
 import Data.Abc.Repeats.Types (RepeatState)
 import Data.Abc.Tempo (AbcTempo, getAbcTempo, setBpm, playedNoteDuration)
@@ -488,7 +488,7 @@ emitNotePlus tempoModifier tstate abcNote extraOffset canPhrase =
 emitNotes :: Rational -> TState -> NonEmptyList AbcNote -> Boolean -> INote
 emitNotes tempoModifier tstate abcNotes canPhrase =
   let
-    pitches :: NEA.NonEmptyArray Int
+    pitches :: NEA.NonEmptyArray MidiPitch
     pitches =
       -- it's not really necessary to reverse here because all the notes start at the 
       -- same offset but it simplifies testing if we use the same order as in the ABC chord
