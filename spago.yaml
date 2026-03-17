@@ -37,5 +37,56 @@ workspace:
         - soundfonts
       git: https://github.com/newlandsvalley/purescript-halogen-components.git
       ref: v0.6.1
+    midi:
+      dependencies:
+        - arrays
+        - bifunctors
+        - control
+        - effect
+        - either
+        - foldable-traversable
+        - integers
+        - lists
+        - maybe
+        - ordered-collections
+        - prelude
+        - signal
+        - string-parsers
+        - strings
+        - tuples
+        - unfoldable
+      git: https://github.com/newlandsvalley/purescript-midi.git
+      ref: 55b1fcc50d9bfe0743053f4cdb3636eb94a7e72a
+    abc-parser:
+      dependencies:
+        - arrays
+        - bifunctors
+        - control
+        - either
+        - enums
+        - foldable-traversable
+        - identity
+        - integers
+        - js-bigints
+        - lists
+        - maybe
+        - midi
+        - newtype
+        - ordered-collections
+        - partial
+        - prelude
+        - profunctor-lenses
+        - rationals
+        - string-parsers
+        - strings
+        - stringutils
+        - transformers
+        - tuples
+        - unfoldable
+      git: https://github.com/newlandsvalley/purescript-abc-parser.git
+      ref: 59b20c40adfc5341e5b3f555fbbabd24e8133b2e
+    soundfonts:
+      git: https://github.com/newlandsvalley/purescript-soundfonts.git
+      ref: f9807c3b956989ed53017bc96e8d3a7a8c41f6a4
   packageSet:
-    registry: 66.3.0
+    registry: 73.3.0

@@ -5,6 +5,7 @@ import Audio.SoundFont (MidiNote)
 import Audio.SoundFont.Melody (Melody)
 import Data.Maybe (Maybe(..))
 import Data.Abc.Melody (PlayableAbc(..), PlayableAbcProperties, Playback(..), toPlayableMelody, defaultPlayableAbcProperties)
+import Data.Abc.Midi (Channel(..), MidiPitch(..))
 import Data.Abc.Parser (parse)
 import Data.Array (take)
 import Data.Either (Either(..))
@@ -442,8 +443,8 @@ abcWorkaroundSpec =
 
 noteC :: Number -> Number -> MidiNote
 noteC offset length =
-  { channel: 0
-  , id: 60
+  { channel: Channel 0
+  , id: MidiPitch 60
   , timeOffset: offset
   , duration: length
   , gain: gain
@@ -451,8 +452,8 @@ noteC offset length =
 
 noteCs :: Number -> Number -> MidiNote
 noteCs offset length =
-  { channel: 0
-  , id: 61
+  { channel: Channel 0
+  , id: MidiPitch 61
   , timeOffset: offset
   , duration: length
   , gain: gain
@@ -460,8 +461,8 @@ noteCs offset length =
 
 noteD :: Number -> Number -> MidiNote
 noteD offset length =
-  { channel: 0
-  , id: 62
+  { channel: Channel 0
+  , id: MidiPitch 62
   , timeOffset: offset
   , duration: length
   , gain: gain
@@ -469,8 +470,8 @@ noteD offset length =
 
 noteE :: Number -> Number -> MidiNote
 noteE offset length =
-  { channel: 0
-  , id: 64
+  { channel: Channel 0
+  , id: MidiPitch 64
   , timeOffset: offset
   , duration: length
   , gain: gain
@@ -478,8 +479,8 @@ noteE offset length =
 
 noteF :: Number -> Number -> MidiNote
 noteF offset length =
-  { channel: 0
-  , id: 65
+  { channel: Channel 0
+  , id: MidiPitch 65
   , timeOffset: offset
   , duration: length
   , gain: gain
@@ -487,8 +488,8 @@ noteF offset length =
 
 noteFs :: Number -> Number -> MidiNote
 noteFs offset length =
-  { channel: 0
-  , id: 66
+  { channel: Channel 0
+  , id: MidiPitch 66
   , timeOffset: offset
   , duration: length
   , gain: gain
@@ -496,8 +497,8 @@ noteFs offset length =
 
 noteG :: Number -> Number -> MidiNote
 noteG offset length =
-  { channel: 0
-  , id: 67
+  { channel: Channel 0
+  , id: MidiPitch 67
   , timeOffset: offset
   , duration: length
   , gain: gain
@@ -505,8 +506,8 @@ noteG offset length =
 
 noteA :: Number -> Number -> MidiNote
 noteA offset length =
-  { channel: 0
-  , id: 69
+  { channel: Channel 0
+  , id: MidiPitch 69
   , timeOffset: offset
   , duration: length
   , gain: gain
@@ -514,8 +515,8 @@ noteA offset length =
 
 noteB :: Number -> Number -> MidiNote
 noteB offset length =
-  { channel: 0
-  , id: 71
+  { channel: Channel 0
+  , id: MidiPitch 71
   , timeOffset: offset
   , duration: length
   , gain: gain
@@ -523,8 +524,8 @@ noteB offset length =
 
 noteCs' :: Number -> Number -> MidiNote
 noteCs' offset length =
-  { channel: 0
-  , id: 73
+  { channel: Channel 0
+  , id: MidiPitch 73
   , timeOffset: offset
   , duration: length
   , gain: gain
@@ -532,8 +533,8 @@ noteCs' offset length =
 
 noteD' :: Number -> Number -> MidiNote
 noteD' offset length =
-  { channel: 0
-  , id: 74
+  { channel: Channel 0
+  , id: MidiPitch 74
   , timeOffset: offset
   , duration: length
   , gain: gain
@@ -541,28 +542,17 @@ noteD' offset length =
 
 noteE' :: Number -> Number -> MidiNote
 noteE' offset length =
-  { channel: 0
-  , id: 76
+  { channel: Channel 0
+  , id: MidiPitch 76
   , timeOffset: offset
   , duration: length
   , gain: gain
   }
 
-{-}
-noteFs' :: Number -> Number -> MidiNote
-noteFs' offset length =
-  { channel : 0
-  , id  : 78
-  , timeOffset : offset
-  , duration : length
-  , gain : gain
-  }
--}
-
 rest :: Number -> Number -> MidiNote
 rest offset length =
-  { channel: 0
-  , id: 0
+  { channel: Channel 0
+  , id: MidiPitch 0
   , timeOffset: offset
   , duration: length
   , gain: gain

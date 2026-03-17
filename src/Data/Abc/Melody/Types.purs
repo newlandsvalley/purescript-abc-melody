@@ -8,7 +8,7 @@ module Data.Abc.Melody.Types
   ) where
 
 import Data.Abc (Volta)
-import Data.Abc.Midi.Pitch (MidiPitch)
+import Data.Abc.Midi (Channel, MidiPitch)
 import Data.Array.NonEmpty (NonEmptyArray)
 import Data.List (List)
 import Data.List.NonEmpty (NonEmptyList)
@@ -20,7 +20,7 @@ import Prelude (class Eq, class Show)
 -- | or a chord (i.e. with all other parameters identical) if there is 
 -- | more than one pitch
 type INote =
-  { channel :: Int -- the MIDI channel
+  { channel :: Channel -- the MIDI channel
   , pitches :: NonEmptyArray MidiPitch -- the MIDI pitch numbers
   , timeOffset :: Number -- the time delay in seconds before the note is played
   , duration :: Number -- the duration of the note

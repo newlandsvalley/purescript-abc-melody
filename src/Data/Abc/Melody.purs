@@ -21,7 +21,8 @@ import Data.Abc.Melody.Intro (appendIntroSections)
 import Data.Abc.Melody.RepeatBuilder (buildRepeatedMelody)
 import Data.Abc.Melody.RepeatSections (initialRepeatState, indexBar, finalBar)
 import Data.Abc.Melody.Types (INote, IPhrase, MidiBar)
-import Data.Abc.Midi.Pitch (MidiPitch, toMidiPitch)
+import Data.Abc.Midi.Pitch (toMidiPitch)
+import Data.Abc.Midi (MidiPitch(..))
 import Data.Abc.Normaliser (normalise)
 import Data.Abc.Repeats.Types (RepeatState)
 import Data.Abc.Tempo (AbcTempo, getAbcTempo, setBpm, playedNoteDuration)
@@ -507,7 +508,7 @@ emitRest tempoModifier tstate rest =
     duration =
       playedNoteDuration tstate.abcTempo (rest.duration * tempoModifier)
   in
-    iNote tstate.currentOffset duration 0 true
+    iNote tstate.currentOffset duration (MidiPitch 0) true
 
 -- | emit the grace notes that may preface a 'graced' note
 -- | This is a bit hacky.  We don't update state after each emission bur instead
